@@ -43,6 +43,7 @@ etcd:
   timeout: 30                     # 30 seconds
 
 plugins:
+
   - http-logger
   - ip-restriction
   - jwt-auth
