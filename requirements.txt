@@ -3,3 +3,5 @@ kafka-python==2.0.2
 flask==2.3.3
 requests==2.31.0
 python-dateutil==2.8.2
+xmltodict==0.13.0
+lxml==4.9.3

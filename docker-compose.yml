@@ -79,7 +79,7 @@ services:
     volumes:
       - ./web2_kafka_service.py:/app/web2_kafka_service.py
     ports:
-      - "9082:80/tcp"
+      - "9085:80/tcp"
     working_dir: /app
     command: >
       sh -c "
@@ -117,7 +117,7 @@ services:
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0
     hostname: zookeeper
-    container_name: oms-zookeeper
+    container_name: apisix-workshop-zookeeper
     restart: always
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
@@ -135,7 +135,7 @@ services:
   kafka:
     image: confluentinc/cp-kafka:7.4.0
     hostname: kafka
-    container_name: oms-kafka
+    container_name: apisix-workshop-kafka
     restart: always
     depends_on:
       - zookeeper
@@ -143,7 +143,7 @@ services:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9093
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
@@ -165,7 +165,7 @@ services:
   kafka-rest:
     image: confluentinc/cp-kafka-rest:7.4.0
     hostname: kafka-rest
-    container_name: oms-kafka-rest
+    container_name: apisix-workshop-kafka-rest
     restart: always
     depends_on:
       - kafka
@@ -183,7 +183,7 @@ services:
   schema-registry:
     image: confluentinc/cp-schema-registry:7.4.0
     hostname: schema-registry
-    container_name: oms-schema-registry
+    container_name: apisix-workshop-schema-registry
     restart: always
     depends_on:
       - kafka
@@ -200,7 +200,7 @@ services:
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     hostname: kafka-ui
-    container_name: oms-kafka-ui
+    container_name: apisix-workshop-kafka-ui
     restart: always
     depends_on:
       - kafka
@@ -208,11 +208,14 @@ services:
       - schema-registry
     environment:
       KAFKA_CLUSTERS_0_NAME: oms-cluster
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
-      KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: connect
-      KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://kafka-connect:8083
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: kafka-rest
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://kafka-rest:8082
       DYNAMIC_CONFIG_ENABLED: 'true'
+      KAFKA_CLUSTERS_0_TOPIC_PAGE_SIZE: '25'
+      KAFKA_CLUSTERS_0_TOPIC_PAGE_SIZE_MAX: '100'
+      KAFKA_CLUSTERS_0_TOPIC_PAGE_SIZE_DEFAULT: '25'
     ports:
       - "8080:8080"
     networks:
@@ -222,7 +225,7 @@ services:
   kaifa-hes-mock:
     image: nginx:1.19.0-alpine
     hostname: kaifa-hes-mock
-    container_name: oms-kaifa-hes-mock
+    container_name: apisix-workshop-kaifa-hes-mock
     restart: always
     volumes:
       - ./kaifa_hes_mock:/usr/share/nginx/html
@@ -235,12 +238,32 @@ services:
   oms-app-mock:
     image: nginx:1.19.0-alpine
     hostname: oms-app-mock
-    container_name: oms-app-mock
+    container_name: apisix-workshop-app-mock
     restart: always
     volumes:
       - ./oms_app_mock:/usr/share/nginx/html
     ports:
       - "8084:80"
+    networks:
+      apisix:
+
+  # HES-Kaifa Consumer Service
+  hes-consumer:
+    image: python:3.9-slim
+    hostname: hes-consumer
+    container_name: apisix-workshop-hes-consumer
+    restart: always
+    volumes:
+      - ./Kaifa-HES-Events:/workspace/Kaifa-HES-Events
+      - ./requirements.txt:/workspace/requirements.txt
+    working_dir: /workspace/Kaifa-HES-Events
+    command: >
+      sh -c "
+        pip install --no-cache-dir -r /workspace/requirements.txt &&
+        python run_consumer.py --bootstrap-servers kafka:9092 --topic hes-kaifa-outage-topic --group-id hes-kaifa-consumer-group --output-dir /workspace/Kaifa-HES-Events
+      "
+    depends_on:
+      - kafka
     networks:
       apisix:
 

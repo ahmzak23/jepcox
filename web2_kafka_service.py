@@ -22,7 +22,7 @@ class KafkaPublisher:
     def connect_kafka(self):
         try:
             self.kafka_producer = KafkaProducer(
-                bootstrap_servers=['kafka:29092'],
+                bootstrap_servers=['kafka:9092'],
                 value_serializer=lambda v: json.dumps(v).encode('utf-8'),
                 key_serializer=lambda k: k.encode('utf-8') if k else None,
                 retries=3,
