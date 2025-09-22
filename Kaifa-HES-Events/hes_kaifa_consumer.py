@@ -3,6 +3,12 @@
 Kafka Consumer for HES-Kaifa Outage Topic
 Consumes SOAP messages from hes-kaifa-outage-topic and converts them to JSON format.
 Stores the transformed messages in dedicated JSON files.
+
+Database Storage:
+- Database storage functionality is included and controlled by enable_database parameter
+- Set enable_database=False for local development (default)
+- Set enable_database=True for server deployment with PostgreSQL
+- Requires psycopg2 package and PostgreSQL database with the provided schema
 """
 
 import json
@@ -16,6 +22,11 @@ from kafka.errors import KafkaError
 import signal
 import sys
 
+# Database imports
+import psycopg2
+from psycopg2.extras import RealDictCursor
+import psycopg2.pool
+
 
 class HESKaifaConsumer:
     """Kafka consumer for HES-Kaifa outage events with SOAP to JSON transformation."""
@@ -23,8 +34,9 @@ class HESKaifaConsumer:
     def __init__(self, 
                  bootstrap_servers: str = 'localhost:9092',
                  topic: str = 'hes-kaifa-outage-topic',
-                 output_dir: str = 'apisix-workshop/Kaifa-HES-Events/hes_kaifa_events',
-                 group_id: str = 'hes-kaifa-consumer-group'):
+                 output_dir: str = 'apisix-workshop/Kaifa-HES-Events/hes_kaifa_events_log',
+                 group_id: str = 'hes-kaifa-consumer-group',
+                 enable_database: bool = False):
         """
         Initialize the HES-Kaifa consumer.
         
@@ -33,13 +45,19 @@ class HESKaifaConsumer:
             topic: Kafka topic to consume from
             output_dir: Directory to store JSON files
             group_id: Kafka consumer group ID
+            enable_database: Enable database storage (uncomment database code on server)
         """
         self.bootstrap_servers = bootstrap_servers
         self.topic = topic
         self.output_dir = output_dir
         self.group_id = group_id
+        self.enable_database = enable_database
         self.consumer = None
         self.running = True
+        
+        # Database configuration - will be loaded from database_config.py
+        self.db_config = None
+        self.db_pool = None
         
         # Setup logging
         self._setup_logging()
@@ -69,6 +87,85 @@ class HESKaifaConsumer:
         self.running = False
         if self.consumer:
             self.consumer.close()
+        # Close database connections if enabled
+        if self.enable_database and self.db_pool:
+            self.db_pool.closeall()
+    
+    # =============================================
+    # DATABASE METHODS
+    # =============================================
+    
+    def _init_database_connection(self):
+        """Initialize database connection pool."""
+        try:
+            # Import database configuration
+            import sys
+            import os
+            sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            from database_config import get_database_config
+            
+            # Load database configuration
+            db_config = get_database_config()
+            self.db_config = db_config.get_connection_config()
+            
+            self.db_pool = psycopg2.pool.SimpleConnectionPool(
+                1, 10, **self.db_config
+            )
+            self.logger.info(f"Database connection pool initialized: {db_config}")
+        except Exception as e:
+            self.logger.error(f"Failed to initialize database connection: {e}")
+            raise
+    
+    def _get_database_connection(self):
+        """Get database connection from pool."""
+        if not self.db_pool:
+            self._init_database_connection()
+        return self.db_pool.getconn()
+    
+    def _return_database_connection(self, conn):
+        """Return database connection to pool."""
+        if self.db_pool:
+            self.db_pool.putconn(conn)
+    
+    def _store_to_database(self, data: Dict[str, Any]) -> bool:
+        """
+        Store event data to PostgreSQL database.
+        
+        Args:
+            data: Transformed JSON data to store
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.enable_database:
+            self.logger.info("Database storage is disabled (enable_database=False)")
+            return True
+            
+        try:
+            conn = self._get_database_connection()
+            cursor = conn.cursor()
+            
+            # Convert Python dict to JSON string for PostgreSQL
+            json_string = json.dumps(data)
+            
+            # Call the PostgreSQL function to insert event
+            cursor.execute("SELECT insert_hes_event_from_json(%s::jsonb)", (json_string,))
+            
+            event_id = cursor.fetchone()[0]
+            conn.commit()
+            
+            self.logger.info(f"Successfully stored event {event_id} to database")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Failed to store event to database: {e}")
+            if 'conn' in locals():
+                conn.rollback()
+            return False
+        finally:
+            if 'conn' in locals():
+                cursor.close()
+                self._return_database_connection(conn)
     
     def _create_consumer(self) -> KafkaConsumer:
         """Create and configure Kafka consumer."""
@@ -124,16 +221,34 @@ class HESKaifaConsumer:
             Transformed JSON structure
         """
         try:
-            # Extract EventMessage from SOAP body
-            if 'ns1:EventMessage' in soap_body:
-                event_message = soap_body['ns1:EventMessage']
-                
+            # Extract EventMessage from SOAP body (be tolerant to namespace/case variants)
+            event_message = (
+                soap_body.get('ns1:EventMessage')
+                or soap_body.get('EventMessage')
+                or soap_body.get('ns:EventMessage')
+            )
+
+            if event_message is not None:
+                # Support both prefixed and unprefixed Header/Payload keys
+                header_dict = (
+                    event_message.get('ns1:Header')
+                    or event_message.get('Header')
+                    or event_message.get('ns:Header')
+                    or {}
+                )
+                payload_dict = (
+                    event_message.get('ns1:Payload')
+                    or event_message.get('Payload')
+                    or event_message.get('ns:Payload')
+                    or {}
+                )
+
                 # Transform the structure to a more readable JSON format
                 transformed = {
                     'message_type': 'EndDeviceEvent',
                     'timestamp': datetime.now().isoformat(),
-                    'header': self._extract_header(event_message.get('ns1:Header', {})),
-                    'payload': self._extract_payload(event_message.get('ns1:Payload', {})),
+                    'header': self._extract_header(header_dict),
+                    'payload': self._extract_payload(payload_dict),
                     'metadata': {
                         'source': 'hes-kaifa-outage-topic',
                         'processed_at': datetime.now().isoformat()
@@ -149,41 +264,56 @@ class HESKaifaConsumer:
     
     def _extract_header(self, header: Dict[str, Any]) -> Dict[str, Any]:
         """Extract and clean header information."""
+        def first_of(keys):
+            for k in keys:
+                if k in header:
+                    return header.get(k, '')
+            return ''
+
         return {
-            'verb': header.get('ns1:Verb', ''),
-            'noun': header.get('ns1:Noun', ''),
-            'revision': header.get('ns1:Revision', ''),
-            'timestamp': header.get('ns1:Timestamp', ''),
-            'source': header.get('ns1:Source', ''),
-            'async_reply_flag': header.get('ns1:AsyncReplyFlag', ''),
-            'ack_required': header.get('ns1:AckRequired', ''),
-            'user': header.get('ns1:User', {}),
-            'message_id': header.get('ns1:MessageID', ''),
-            'correlation_id': header.get('ns1:CorrelationID', ''),
-            'comment': header.get('ns1:Comment', '')
+            'verb': first_of(['ns1:Verb', 'Verb', 'ns:Verb', 'ns1:verb', 'verb']),
+            'noun': first_of(['ns1:Noun', 'Noun', 'ns:Noun', 'ns1:noun', 'noun']),
+            'revision': first_of(['ns1:Revision', 'Revision', 'ns:Revision', 'ns1:revision', 'revision']),
+            'timestamp': first_of(['ns1:Timestamp', 'Timestamp', 'ns:Timestamp', 'ns1:timestamp', 'timestamp']),
+            'source': first_of(['ns1:Source', 'Source', 'ns:Source', 'ns1:source', 'source']),
+            'async_reply_flag': first_of(['ns1:AsyncReplyFlag', 'AsyncReplyFlag', 'ns:AsyncReplyFlag', 'ns1:async_reply_flag', 'async_reply_flag']),
+            'ack_required': first_of(['ns1:AckRequired', 'AckRequired', 'ns:AckRequired', 'ns1:ack_required', 'ack_required']),
+            'user': header.get('ns1:User', header.get('User', {})),
+            'message_id': first_of(['ns1:MessageID', 'MessageID', 'ns:MessageID', 'ns1:MessageId', 'MessageId', 'ns1:message_id', 'message_id']),
+            'correlation_id': first_of(['ns1:CorrelationID', 'CorrelationID', 'ns:CorrelationID', 'ns1:correlation_id', 'correlation_id']),
+            'comment': first_of(['ns1:Comment', 'Comment', 'ns:Comment', 'ns1:comment', 'comment'])
         }
     
     def _extract_payload(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Extract and clean payload information."""
-        if 'ns2:EndDeviceEvents' in payload:
-            events = payload['ns2:EndDeviceEvents']
-            if 'ns2:EndDeviceEvent' in events:
-                event = events['ns2:EndDeviceEvent']
-                return {
-                    'event_id': event.get('ns2:mRID', ''),
-                    'created_date_time': event.get('ns2:createdDateTime', ''),
-                    'issuer_id': event.get('ns2:issuerID', ''),
-                    'issuer_tracking_id': event.get('ns2:issuerTrackingID', ''),
-                    'reason': event.get('ns2:reason', ''),
-                    'severity': event.get('ns2:severity', ''),
-                    'user_id': event.get('ns2:userID', ''),
-                    'assets': event.get('ns2:Assets', {}),
-                    'event_details': event.get('ns2:EndDeviceEventDetails', []),
-                    'event_type': event.get('ns2:EndDeviceEventType', {}),
-                    'names': event.get('ns2:Names', {}),
-                    'status': event.get('ns2:status', {}),
-                    'usage_point': event.get('ns2:UsagePoint', {})
-                }
+        # Accept both prefixed and unprefixed payload structures
+        events_container = payload.get('ns2:EndDeviceEvents') or payload.get('EndDeviceEvents') or {}
+        event = None
+        if isinstance(events_container, dict):
+            event = events_container.get('ns2:EndDeviceEvent') or events_container.get('EndDeviceEvent')
+
+        if isinstance(event, dict):
+            def first_of_e(d, keys):
+                for k in keys:
+                    if k in d:
+                        return d.get(k, '')
+                return ''
+
+            return {
+                'event_id': first_of_e(event, ['ns2:mRID', 'mRID', 'ns2:event_id', 'event_id']),
+                'created_date_time': first_of_e(event, ['ns2:createdDateTime', 'createdDateTime', 'created_date_time']),
+                'issuer_id': first_of_e(event, ['ns2:issuerID', 'issuerID', 'issuer_id']),
+                'issuer_tracking_id': first_of_e(event, ['ns2:issuerTrackingID', 'issuerTrackingID', 'issuer_tracking_id']),
+                'reason': first_of_e(event, ['ns2:reason', 'reason']),
+                'severity': first_of_e(event, ['ns2:severity', 'severity']),
+                'user_id': first_of_e(event, ['ns2:userID', 'userID', 'user_id']),
+                'assets': event.get('ns2:Assets', event.get('Assets', {})),
+                'event_details': event.get('ns2:EndDeviceEventDetails', event.get('EndDeviceEventDetails', [])),
+                'event_type': event.get('ns2:EndDeviceEventType', event.get('EndDeviceEventType', {})),
+                'names': event.get('ns2:Names', event.get('Names', {})),
+                'status': event.get('ns2:status', event.get('status', {})),
+                'usage_point': event.get('ns2:UsagePoint', event.get('UsagePoint', {}))
+            }
         return {}
     
     def _save_to_json_file(self, data: Dict[str, Any], message_id: str) -> str:
@@ -208,6 +338,11 @@ class HESKaifaConsumer:
                 json.dump(data, f, indent=2, ensure_ascii=False)
             
             self.logger.info(f"Saved event to file: {filepath}")
+            
+            # Store to database if enabled and data is well-formed
+            if self.enable_database and isinstance(data, dict) and data.get('message_type'):
+                self._store_to_database(data)
+            
             return filepath
         except Exception as e:
             self.logger.error(f"Error saving JSON file: {e}")
@@ -251,10 +386,18 @@ class HESKaifaConsumer:
                 message_id = message_data.get('request', {}).get('headers', {}).get('X-Message-ID', 
                              message_data.get('request', {}).get('headers', {}).get('Message-ID', 
                              f"msg_{int(datetime.now().timestamp() * 1000)}"))
-                
-                # Save to JSON file
+
+                # If database is enabled, store only in DB (skip JSON files)
+                if self.enable_database:
+                    stored = self._store_to_database(transformed_data)
+                    if stored:
+                        self.logger.info("Successfully processed and stored message to database")
+                        return True
+                    self.logger.error("Processing failed during database store")
+                    return False
+
+                # Otherwise, save to JSON file (legacy/local mode)
                 filepath = self._save_to_json_file(transformed_data, message_id)
-                
                 self.logger.info(f"Successfully processed and saved message to {filepath}")
                 return True
             else:
@@ -269,6 +412,11 @@ class HESKaifaConsumer:
         """Start consuming messages from Kafka topic."""
         try:
             self.logger.info("Starting HES-Kaifa consumer...")
+            
+            # Initialize database connection if enabled
+            if self.enable_database:
+                self._init_database_connection()
+            
             self.consumer = self._create_consumer()
             
             self.logger.info(f"Consumer started. Listening to topic: {self.topic}")

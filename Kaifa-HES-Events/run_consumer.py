@@ -63,6 +63,13 @@ def parse_arguments():
         help='Dry run mode (don\'t save files, just process messages)'
     )
     
+    parser.add_argument(
+        '--enable-database',
+        action='store_true',
+        default=False,
+        help='Enable database storage (default: False)'
+    )
+    
     return parser.parse_args()
 
 
@@ -81,7 +88,8 @@ def create_consumer(args) -> HESKaifaConsumer:
         bootstrap_servers=args.bootstrap_servers,
         topic=args.topic,
         output_dir=args.output_dir,
-        group_id=args.group_id
+        group_id=args.group_id,
+        enable_database=args.enable_database
     )
 
 

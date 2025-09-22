@@ -140,23 +140,6 @@ services:
     networks:
       apisix:
 
-  # Kafka REST Proxy for HTTP API access
-  kafka-rest:
-    image: confluentinc/cp-kafka-rest:7.4.0
-    hostname: kafka-rest
-    container_name: apisix-workshop-kafka-rest
-    restart: always
-    depends_on:
-      - kafka
-    environment:
-      KAFKA_REST_HOST_NAME: kafka-rest
-      KAFKA_REST_BOOTSTRAP_SERVERS: 'kafka:29092'
-      KAFKA_REST_LISTENERS: "http://0.0.0.0:8082"
-      KAFKA_REST_SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
-    ports:
-      - "8082:8082"
-    networks:
-      apisix:
 
 
   # Kafka UI for management and monitoring
@@ -167,13 +150,10 @@ services:
     restart: always
     depends_on:
       - kafka
-      - kafka-rest
     environment:
       KAFKA_CLUSTERS_0_NAME: oms-cluster
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
-      KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: kafka-rest
-      KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://kafka-rest:8082
       DYNAMIC_CONFIG_ENABLED: 'true'
       KAFKA_CLUSTERS_0_TOPIC_PAGE_SIZE: '25'
       KAFKA_CLUSTERS_0_TOPIC_PAGE_SIZE_MAX: '100'
@@ -197,7 +177,7 @@ services:
     command: >
       sh -c "
         pip install --no-cache-dir -r /workspace/requirements.txt &&
-        python run_consumer.py --bootstrap-servers kafka:9092 --topic hes-kaifa-outage-topic --group-id hes-kaifa-consumer-group --output-dir /workspace/Kaifa-HES-Events
+        python run_consumer.py --bootstrap-servers kafka:9092 --topic hes-kaifa-outage-topic --group-id hes-kaifa-consumer-group --output-dir /workspace/Kaifa-HES-Events/hes_kaifa_events_log --enable-database
       "
     depends_on:
       - kafka
