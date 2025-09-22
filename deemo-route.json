@@ -1,0 +1,19 @@
+{
+    "uri": "/deemo",
+    "upstream": {
+        "type": "roundrobin",
+        "nodes": {
+            "httpbin.org:443": 1
+        },
+        "scheme": "https"
+    },
+    "plugins": {
+        "serverless-pre-function": {
+            "phase": "rewrite",
+            "functions": [
+                "ngx.req.read_body()\nlocal body = ngx.req.get_body_data()\nif body then\n    ngx.say(body)\nelse\n    ngx.say('No request body')\nend\nngx.exit(200)"
+            ]
+        }
+    }
+}
+

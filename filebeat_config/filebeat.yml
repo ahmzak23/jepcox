@@ -1,0 +1,69 @@
+filebeat.inputs:
+  # Docker container logs
+  - type: container
+    paths:
+      - '/var/lib/docker/containers/*/*.log'
+    processors:
+      - add_docker_metadata:
+          host: "unix:///var/run/docker.sock"
+      - add_fields:
+          target: 'oms'
+          fields:
+            system: 'oms'
+            environment: 'development'
+
+  # APISIX logs
+  - type: log
+    enabled: true
+    paths:
+      - '/var/log/apisix/*.log'
+    fields:
+      service: 'apisix'
+      system: 'oms'
+    fields_under_root: true
+
+  # Kafka logs
+  - type: log
+    enabled: true
+    paths:
+      - '/var/log/kafka/*.log'
+    fields:
+      service: 'kafka'
+      system: 'oms'
+    fields_under_root: true
+
+  # System logs
+  - type: log
+    enabled: true
+    paths:
+      - '/var/log/syslog'
+    fields:
+      service: 'system'
+      system: 'oms'
+    fields_under_root: true
+
+# Output to Elasticsearch
+output.elasticsearch:
+  hosts: ["elasticsearch:9200"]
+  index: "oms-logs-%{+yyyy.MM.dd}"
+
+# Processors
+processors:
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+  - add_cloud_metadata: ~
+  - add_docker_metadata: ~
+
+# Logging
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 7
+  permissions: 0644
+
+# Monitoring
+monitoring.enabled: true
+monitoring.elasticsearch:
+  hosts: ["elasticsearch:9200"]

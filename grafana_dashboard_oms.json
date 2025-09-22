@@ -1,0 +1,301 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "OMS System Monitoring",
+    "tags": ["oms", "kafka", "apisix"],
+    "style": "dark",
+    "timezone": "browser",
+    "refresh": "5s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Latest Requests & Routes",
+        "type": "table",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(oms_api_requests_total[5m])) by (method, endpoint)",
+            "format": "table",
+            "instant": true,
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "displayMode": "list",
+              "filterable": true
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "API Response Times",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 12,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(oms_api_request_duration_seconds_bucket[5m]))",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 0.5},
+                {"color": "red", "value": 1.0}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Active Outages",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 18,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "oms_active_outages",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 5},
+                {"color": "red", "value": 10}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Kafka Topics Status",
+        "type": "table",
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "kafka_topic_partitions{topic=~\"outage-events|meter-readings|system-health|network-events\"}",
+            "format": "table",
+            "instant": true,
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "displayMode": "list",
+              "filterable": true
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Message Processing Rate",
+        "type": "graph",
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "rate(oms_messages_processed_total[1m])",
+            "legendFormat": "{{topic}}",
+            "refId": "A"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Messages/sec",
+            "min": 0
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Latest Messages",
+        "type": "logs",
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 14
+        },
+        "targets": [
+          {
+            "expr": "{job=\"oms\"} |= \"RECEIVED MESSAGE\"",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "showTime": true,
+          "showLabels": true,
+          "showCommonLabels": false,
+          "wrapLogMessage": true,
+          "sortOrder": "Descending"
+        }
+      },
+      {
+        "id": 7,
+        "title": "System Health",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 0,
+          "y": 22
+        },
+        "targets": [
+          {
+            "expr": "oms_system_health",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"type": "value", "value": "1", "text": "Healthy"},
+              {"type": "value", "value": "0", "text": "Unhealthy"}
+            ],
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "green", "value": 1}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "Total Messages Processed",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 6,
+          "y": 22
+        },
+        "targets": [
+          {
+            "expr": "oms_total_messages_processed",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 9,
+        "title": "Error Rate",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 12,
+          "y": 22
+        },
+        "targets": [
+          {
+            "expr": "rate(oms_errors_total[5m])",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 0.1},
+                {"color": "red", "value": 1.0}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 10,
+        "title": "Kafka Consumer Lag",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 18,
+          "y": 22
+        },
+        "targets": [
+          {
+            "expr": "kafka_consumer_lag_sum",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 10},
+                {"color": "red", "value": 100}
+              ]
+            }
+          }
+        }
+      }
+    ]
+  }
+}

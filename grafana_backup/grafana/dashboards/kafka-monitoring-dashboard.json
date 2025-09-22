@@ -1,0 +1,200 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Kafka Monitoring - OMS System",
+    "tags": ["kafka", "oms", "monitoring"],
+    "style": "dark",
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Kafka Cluster Health",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "kafka_server_kafkaserver_kafkaserverstate",
+            "legendFormat": "Kafka Server State"
+          },
+          {
+            "expr": "kafka_controller_kafkacontroller_activebrokercount",
+            "legendFormat": "Active Brokers"
+          },
+          {
+            "expr": "kafka_controller_kafkacontroller_offlinepartitionscount",
+            "legendFormat": "Offline Partitions"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 1},
+                {"color": "green", "value": 2}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Topic Message Production Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(kafka_server_brokertopicmetrics_messagesinpersec[5m])",
+            "legendFormat": "{{topic}} - Messages/sec"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "yAxes": [
+          {
+            "label": "Messages/sec",
+            "min": 0
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Topic Message Consumption Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(kafka_server_brokertopicmetrics_bytesoutpersec[5m])",
+            "legendFormat": "{{topic}} - Bytes/sec"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "yAxes": [
+          {
+            "label": "Bytes/sec",
+            "min": 0
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Consumer Group Lag",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "kafka_consumer_lag_sum",
+            "legendFormat": "{{topic}} - {{consumer_group}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "yAxes": [
+          {
+            "label": "Lag (messages)",
+            "min": 0
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Topic Partition Count",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "kafka_server_brokertopicmetrics_partitioncount",
+            "legendFormat": "{{topic}}",
+            "format": "table"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {"Time": true},
+              "indexByName": {},
+              "renameByName": {
+                "Value": "Partitions",
+                "topic": "Topic"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Kafka Disk Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "kafka_log_size_bytes",
+            "legendFormat": "{{topic}} - {{partition}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+        "yAxes": [
+          {
+            "label": "Size (bytes)",
+            "min": 0
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Kafka Network I/O",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(kafka_server_socket_server_metrics_network_io_total[5m])",
+            "legendFormat": "Network I/O"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+        "yAxes": [
+          {
+            "label": "Bytes/sec",
+            "min": 0
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Recent Kafka Events",
+        "type": "logs",
+        "targets": [
+          {
+            "expr": "{job=\"kafka\"} |= \"INFO\"",
+            "legendFormat": "Kafka Logs"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 32}
+      },
+      {
+        "id": 9,
+        "title": "OMS Topics Overview",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "count(kafka_server_brokertopicmetrics_messagesinpersec{topic=~\"outage.*|meter.*|system.*|network.*\"})",
+            "legendFormat": "OMS Topics"
+          },
+          {
+            "expr": "sum(rate(kafka_server_brokertopicmetrics_messagesinpersec{topic=~\"outage.*|meter.*|system.*|network.*\"}[5m]))",
+            "legendFormat": "Total Messages/sec"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 40},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "unit": "short"
+          }
+        }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "5s",
+    "schemaVersion": 27,
+    "version": 1
+  }
+}

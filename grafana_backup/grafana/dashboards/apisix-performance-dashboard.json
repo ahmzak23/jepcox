@@ -1,0 +1,216 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "APISIX Performance Monitoring",
+    "tags": ["apisix", "performance", "oms"],
+    "style": "dark",
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "APISIX Gateway Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"apisix\"}",
+            "legendFormat": "APISIX Status"
+          },
+          {
+            "expr": "apisix_nginx_http_requests_total",
+            "legendFormat": "Total Requests"
+          },
+          {
+            "expr": "apisix_nginx_http_connections_active",
+            "legendFormat": "Active Connections"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "green", "value": 1}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Request Rate by Route",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(apisix_http_requests_total[5m])",
+            "legendFormat": "{{route}} - {{method}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "yAxes": [
+          {
+            "label": "Requests/sec",
+            "min": 0
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Response Time Distribution",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.99, rate(apisix_http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "99th percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(apisix_http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "95th percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(apisix_http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "50th percentile"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "yAxes": [
+          {
+            "label": "Response Time (s)",
+            "min": 0
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "HTTP Status Codes",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "sum(rate(apisix_http_requests_total[5m])) by (code)",
+            "legendFormat": "{{code}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+      },
+      {
+        "id": 5,
+        "title": "Route Performance Table",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "sum(rate(apisix_http_requests_total[5m])) by (route)",
+            "legendFormat": "{{route}}",
+            "format": "table"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(apisix_http_request_duration_seconds_bucket[5m])) by (route)",
+            "legendFormat": "{{route}} - P95",
+            "format": "table"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+        "transformations": [
+          {
+            "id": "merge",
+            "options": {}
+          },
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {"Time": true},
+              "indexByName": {},
+              "renameByName": {
+                "Value #A": "Requests/sec",
+                "Value #B": "P95 Response Time (s)",
+                "route": "Route"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Error Rate by Route",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(apisix_http_requests_total{code=~\"4..|5..\"}[5m])",
+            "legendFormat": "{{route}} - {{code}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+        "yAxes": [
+          {
+            "label": "Errors/sec",
+            "min": 0
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Upstream Health",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "apisix_upstream_status",
+            "legendFormat": "{{upstream}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+        "yAxes": [
+          {
+            "label": "Status",
+            "min": 0,
+            "max": 1
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Recent APISIX Requests",
+        "type": "logs",
+        "targets": [
+          {
+            "expr": "{job=\"apisix\"} |= \"request\"",
+            "legendFormat": "APISIX Access Logs"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 32}
+      },
+      {
+        "id": 9,
+        "title": "OMS API Endpoints Performance",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(rate(apisix_http_requests_total{route=~\"/oms/.*\"}[5m]))",
+            "legendFormat": "OMS API Requests/sec"
+          },
+          {
+            "expr": "sum(rate(apisix_http_requests_total{route=~\"/kaifa/.*\"}[5m]))",
+            "legendFormat": "KAIFA HES Requests/sec"
+          },
+          {
+            "expr": "sum(rate(apisix_http_requests_total{route=~\"/kafka/.*\"}[5m]))",
+            "legendFormat": "Kafka API Requests/sec"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 40},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "unit": "reqps"
+          }
+        }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "5s",
+    "schemaVersion": 27,
+    "version": 1
+  }
+}

@@ -1,40 +1,93 @@
-#
-# Licensed to the Apache Software Foundation (ASF) under one or more
-# contributor license agreements.  See the NOTICE file distributed with
-# this work for additional information regarding copyright ownership.
-# The ASF licenses this file to You under the Apache License, Version 2.0
-# (the "License"); you may not use this file except in compliance with
-# the License.  You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-
 global:
-  scrape_interval: 1s     # By default, scrape targets every 15 seconds.
+  scrape_interval: 15s
+  evaluation_interval: 15s
 
-  # Attach these labels to any time series or alerts when communicating with
-  # external systems (federation, remote storage, Alertmanager).
-  external_labels:
-    stack: "apisix"
+rule_files:
+  - "rules/*.yml"
 
-
-# A scrape configuration containing exactly one endpoint to scrape:
-# Here it's Prometheus itself.
 scrape_configs:
-  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
-  - job_name: "prometheus"
-    # Override the global default and scrape targets from this job every 5 seconds.
-    scrape_interval: 5s
+  # APISIX Gateway
+  - job_name: 'apisix'
     static_configs:
-      - targets: ["localhost:9090"]
-  - job_name: "apisix"
+      - targets: ['apisix:9091']
+    metrics_path: '/apisix/prometheus/metrics'
     scrape_interval: 5s
-    metrics_path: "/apisix/prometheus/metrics"
+
+  # Prometheus itself
+  - job_name: 'prometheus'
     static_configs:
-      - targets: ["host.docker.internal:9091"]
+      - targets: ['localhost:9090']
+
+  # Kafka JMX metrics
+  - job_name: 'kafka'
+    static_configs:
+      - targets: ['kafka:9092']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Kafka REST Proxy
+  - job_name: 'kafka-rest'
+    static_configs:
+      - targets: ['kafka-rest:8082']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Zookeeper
+  - job_name: 'zookeeper'
+    static_configs:
+      - targets: ['zookeeper:2181']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Docker containers
+  - job_name: 'docker'
+    static_configs:
+      - targets: ['host.docker.internal:9323']
+    scrape_interval: 10s
+
+  # Node exporter for system metrics
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 10s
+
+  # cAdvisor for container metrics
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 10s
+
+  # OMS App Mock (if it exposes metrics)
+  - job_name: 'oms-app'
+    static_configs:
+      - targets: ['oms-app-mock:80']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # KAIFA HES Mock (if it exposes metrics)
+  - job_name: 'kaifa-hes'
+    static_configs:
+      - targets: ['kaifa-hes-mock:80']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # etcd
+  - job_name: 'etcd'
+    static_configs:
+      - targets: ['etcd:2379']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Grafana
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # OMS Professional Metrics Collector
+  - job_name: 'oms-professional-metrics'
+    static_configs:
+      - targets: ['host.docker.internal:8000']
+    metrics_path: '/metrics'
+    scrape_interval: 5s

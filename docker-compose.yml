@@ -42,6 +42,7 @@ services:
       - "9091:9091/tcp"
       - "9443:9443/tcp"
       - "9092:9092/tcp"
+      - "9180:9180/tcp"
     networks:
       apisix:
 
@@ -73,16 +74,22 @@ services:
       apisix:
 
   web2:
-    image: nginx:1.19.0-alpine
+    image: python:3.9-alpine
     restart: always
     volumes:
-      - ./upstream/web2.conf:/etc/nginx/nginx.conf
+      - ./web2_kafka_service.py:/app/web2_kafka_service.py
     ports:
       - "9082:80/tcp"
-    environment:
-      - NGINX_PORT=80
+    working_dir: /app
+    command: >
+      sh -c "
+        pip install flask kafka-python &&
+        python web2_kafka_service.py
+      "
     networks:
       apisix:
+    depends_on:
+      - kafka
 
   prometheus:
     image: prom/prometheus:v2.25.0
@@ -95,7 +102,7 @@ services:
       apisix:
 
   grafana:
-    image: grafana/grafana:7.3.7
+    image: grafana/grafana:latest
     restart: always
     ports:
       - "3000:3000"
@@ -106,10 +113,148 @@ services:
     networks:
       apisix:
 
+  # Kafka Infrastructure for OMS System
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    hostname: zookeeper
+    container_name: oms-zookeeper
+    restart: always
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_SERVER_ID: 1
+      ZOOKEEPER_SERVERS: zookeeper:2888:3888
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_logs:/var/lib/zookeeper/log
+    ports:
+      - "2181:2181"
+    networks:
+      apisix:
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    hostname: kafka
+    container_name: oms-kafka
+    restart: always
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+      KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 300000
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    ports:
+      - "9093:9092"
+      - "29092:29092"
+    networks:
+      apisix:
+
+  # Kafka REST Proxy for HTTP API access
+  kafka-rest:
+    image: confluentinc/cp-kafka-rest:7.4.0
+    hostname: kafka-rest
+    container_name: oms-kafka-rest
+    restart: always
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_REST_HOST_NAME: kafka-rest
+      KAFKA_REST_BOOTSTRAP_SERVERS: 'kafka:29092'
+      KAFKA_REST_LISTENERS: "http://0.0.0.0:8082"
+      KAFKA_REST_SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+    ports:
+      - "8082:8082"
+    networks:
+      apisix:
+
+  # Schema Registry for message schema management
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.4.0
+    hostname: schema-registry
+    container_name: oms-schema-registry
+    restart: always
+    depends_on:
+      - kafka
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'kafka:29092'
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+    ports:
+      - "8081:8081"
+    networks:
+      apisix:
+
+  # Kafka UI for management and monitoring
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    hostname: kafka-ui
+    container_name: oms-kafka-ui
+    restart: always
+    depends_on:
+      - kafka
+      - kafka-rest
+      - schema-registry
+    environment:
+      KAFKA_CLUSTERS_0_NAME: oms-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: connect
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://kafka-connect:8083
+      DYNAMIC_CONFIG_ENABLED: 'true'
+    ports:
+      - "8080:8080"
+    networks:
+      apisix:
+
+  # Mock KAIFA HES Data Source (for testing)
+  kaifa-hes-mock:
+    image: nginx:1.19.0-alpine
+    hostname: kaifa-hes-mock
+    container_name: oms-kaifa-hes-mock
+    restart: always
+    volumes:
+      - ./kaifa_hes_mock:/usr/share/nginx/html
+    ports:
+      - "8083:80"
+    networks:
+      apisix:
+
+  # OMS Application Mock (for testing)
+  oms-app-mock:
+    image: nginx:1.19.0-alpine
+    hostname: oms-app-mock
+    container_name: oms-app-mock
+    restart: always
+    volumes:
+      - ./oms_app_mock:/usr/share/nginx/html
+    ports:
+      - "8084:80"
+    networks:
+      apisix:
+
 networks:
   apisix:
     driver: bridge
 
 volumes:
   etcd_data:
+  web2_logs:
+    driver: local
+  zookeeper_data:
+    driver: local
+  zookeeper_logs:
+    driver: local
+  kafka_data:
     driver: local

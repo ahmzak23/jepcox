@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <title>OMS Application Mock - Outage Management System</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header { color: #2c3e50; border-bottom: 2px solid #e74c3c; padding-bottom: 10px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .active { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .critical { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .endpoint { background-color: #f8f9fa; padding: 10px; margin: 10px 0; border-left: 4px solid #28a745; }
+        .code { background-color: #f8f9fa; padding: 15px; border-radius: 4px; font-family: monospace; }
+        .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+        .card { background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #dee2e6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="header">⚡ OMS Application Mock</h1>
+        <p>This is a mock OMS (Outage Management System) application that consumes data from Kafka and provides APIs through APISIX.</p>
+        
+        <div class="status active">
+            <strong>✅ System Status:</strong> Online and consuming from Kafka
+        </div>
+        
+        <div class="dashboard">
+            <div class="card">
+                <h3>📊 Current Outages</h3>
+                <p><strong>Active:</strong> 3</p>
+                <p><strong>Resolved:</strong> 12</p>
+                <p><strong>Critical:</strong> 1</p>
+            </div>
+            <div class="card">
+                <h3>🔧 System Health</h3>
+                <p><strong>Kafka:</strong> Connected</p>
+                <p><strong>APISIX:</strong> Healthy</p>
+                <p><strong>Database:</strong> Online</p>
+            </div>
+        </div>
+        
+        <h2>📡 API Endpoints (via APISIX)</h2>
+        <div class="endpoint">
+            <strong>GET /oms/api/outages</strong> - List all outages<br>
+            <strong>GET /oms/api/outages/{id}</strong> - Get specific outage<br>
+            <strong>POST /oms/api/outages</strong> - Create new outage<br>
+            <strong>PUT /oms/api/outages/{id}</strong> - Update outage status<br>
+            <strong>GET /oms/api/meters</strong> - Meter readings<br>
+            <strong>GET /oms/api/health</strong> - System health
+        </div>
+        
+        <h2>🔄 Data Flow</h2>
+        <div class="code">
+KAIFA HES → Kafka → OMS App → APISIX → Client Apps<br><br>
+1. KAIFA HES publishes outage data to Kafka<br>
+2. OMS App consumes from Kafka topics<br>
+3. OMS App processes and stores data<br>
+4. APISIX provides REST APIs to clients<br>
+5. Clients access data through APISIX
+        </div>
+        
+        <h2>🧪 Test Commands</h2>
+        <div class="code">
+# Test OMS API through APISIX<br>
+curl http://localhost:9080/oms/api/outages<br><br>
+# Test direct OMS app<br>
+curl http://localhost:8084/api/health<br><br>
+# Check Kafka consumer lag<br>
+curl http://localhost:8080
+        </div>
+        
+        <div class="status info">
+            <strong>ℹ️ Note:</strong> This mock OMS application simulates real outage management functionality for development and testing.
+        </div>
+    </div>
+</body>
+</html>

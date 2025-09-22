@@ -1,0 +1,18 @@
+{
+    "uri": "/user-profile",
+    "upstream": {
+        "type": "roundrobin",
+        "nodes": {
+            "httpbin.org:443": 1
+        },
+        "scheme": "https"
+    },
+    "plugins": {
+        "serverless-pre-function": {
+            "phase": "rewrite",
+            "functions": [
+                "local cjson = require 'cjson'\n\n-- Get the original XML body from the request\nngx.req.read_body()\nlocal xml_body = ngx.req.get_body_data()\nif xml_body == nil or xml_body == '' then\n    ngx.log(ngx.ERR, 'failed to get request body or body is empty')\n    ngx.status = 500\n    ngx.say(cjson.encode({message = 'Failed to read request body'}))\n    ngx.exit(500)\nend\n\n-- Log the received XML for debugging\nngx.log(ngx.INFO, 'Received XML: ', xml_body)\n\n-- Simple XML parsing (basic implementation)\nlocal function parse_xml_user(xml_str)\n    local user = {}\n    \n    -- Extract name\n    local name = xml_str:match('<name>([^<]+)</name>')\n    if name then user.name = name end\n    \n    -- Extract email\n    local email = xml_str:match('<email>([^<]+)</email>')\n    if email then user.email = email end\n    \n    -- Extract age\n    local age = xml_str:match('<age>([^<]+)</age>')\n    if age then user.age = tonumber(age) or age end\n    \n    -- Log parsed data for debugging\n    ngx.log(ngx.INFO, 'Parsed user data: ', cjson.encode(user))\n    \n    return user\nend\n\n-- Parse the XML into a Lua table\nlocal user_data = parse_xml_user(xml_body)\n\n-- Check if we have at least one field\nif not user_data or (not user_data.name and not user_data.email and not user_data.age) then\n    ngx.log(ngx.ERR, 'failed to parse XML - no valid fields found')\n    ngx.status = 400\n    ngx.say(cjson.encode({message = 'Invalid XML format - no valid user fields found', received = xml_body}))\n    ngx.exit(400)\nend\n\n-- Convert the Lua table into a JSON string\nlocal json_body = cjson.encode(user_data)\n\n-- Log the JSON output for debugging\nngx.log(ngx.INFO, 'JSON output: ', json_body)\n\n-- PRINT THE CONVERTED CONTENT TO CONSOLE/LOGS\nngx.log(ngx.INFO, '=== XML TO JSON CONVERSION ===')\nngx.log(ngx.INFO, 'Original XML: ', xml_body)\nngx.log(ngx.INFO, 'Converted JSON: ', json_body)\nngx.log(ngx.INFO, '=== END CONVERSION ===')\n\n-- Also print to response headers for debugging\nngx.header['X-Original-XML'] = xml_body\nngx.header['X-Converted-JSON'] = json_body\n\n-- Overwrite the original request body with the new JSON body\nngx.req.set_body_data(json_body)\n\n-- CRITICAL - Update the Content-Type header to match the new body\nngx.req.set_header('Content-Type', 'application/json')"
+            ]
+        }
+    }
+}

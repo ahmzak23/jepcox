@@ -1,0 +1,505 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "OMS System - Advanced Monitoring",
+    "tags": ["oms", "kafka", "outage-management"],
+    "style": "dark",
+    "timezone": "browser",
+    "refresh": "5s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "🚨 Active Outages by Severity",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 0,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "oms_active_outages{severity=\"CRITICAL\"}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 1},
+                {"color": "red", "value": 5}
+              ]
+            },
+            "mappings": [],
+            "unit": "short"
+          }
+        },
+        "options": {
+          "colorMode": "background",
+          "graphMode": "area",
+          "justifyMode": "center",
+          "orientation": "horizontal"
+        }
+      },
+      {
+        "id": 2,
+        "title": "⚠️ High Severity Outages",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 6,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "oms_active_outages{severity=\"HIGH\"}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 3},
+                {"color": "red", "value": 10}
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "📊 Total Outages Today",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 12,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "increase(oms_total_outages[1d])",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "⚡ System Health Score",
+        "type": "gauge",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 18,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "oms_system_health_score",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "min": 0,
+            "max": 100,
+            "unit": "percent",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 70},
+                {"color": "green", "value": 90}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "🔥 Real-time Outage Map",
+        "type": "geomap",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 4
+        },
+        "targets": [
+          {
+            "expr": "oms_outage_locations",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "basemap": {
+            "type": "carto",
+            "name": "CartoDB Positron"
+          },
+          "controls": {
+            "showZoom": true,
+            "showAttribution": true,
+            "showScale": true,
+            "showDebug": false
+          },
+          "layers": [
+            {
+              "type": "markers",
+              "config": {
+                "style": {
+                  "color": {
+                    "field": "severity",
+                    "fixed": "red"
+                  },
+                  "size": {
+                    "field": "affected_customers",
+                    "min": 5,
+                    "max": 50
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": 6,
+        "title": "📈 Outage Trends (Last 24h)",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 4
+        },
+        "targets": [
+          {
+            "expr": "rate(oms_outages_created_total[5m])",
+            "legendFormat": "Outages Created",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(oms_outages_resolved_total[5m])",
+            "legendFormat": "Outages Resolved",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              },
+              "lineInterpolation": "linear",
+              "lineWidth": 1,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "red", "value": 80}
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "📋 Latest Outage Events",
+        "type": "table",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 12
+        },
+        "targets": [
+          {
+            "expr": "oms_latest_outages",
+            "format": "table",
+            "instant": true,
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "align": "auto",
+              "displayMode": "auto",
+              "filterable": true,
+              "sortable": true
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "red", "value": 80}
+              ]
+            }
+          }
+        },
+        "options": {
+          "showHeader": true,
+          "sortBy": [
+            {
+              "desc": true,
+              "displayName": "timestamp"
+            }
+          ]
+        }
+      },
+      {
+        "id": 8,
+        "title": "🔄 Kafka Message Flow",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 12
+        },
+        "targets": [
+          {
+            "expr": "rate(kafka_consumer_messages_consumed_total{topic=\"outage-events\"}[1m])",
+            "legendFormat": "Outage Events",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(kafka_consumer_messages_consumed_total{topic=\"meter-readings\"}[1m])",
+            "legendFormat": "Meter Readings",
+            "refId": "B"
+          },
+          {
+            "expr": "rate(kafka_consumer_messages_consumed_total{topic=\"system-health\"}[1m])",
+            "legendFormat": "System Health",
+            "refId": "C"
+          },
+          {
+            "expr": "rate(kafka_consumer_messages_consumed_total{topic=\"network-events\"}[1m])",
+            "legendFormat": "Network Events",
+            "refId": "D"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              },
+              "lineInterpolation": "linear",
+              "lineWidth": 2,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "red", "value": 80}
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 9,
+        "title": "⚡ Performance Metrics",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 0,
+          "y": 20
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(oms_api_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "95th Percentile",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(oms_api_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "50th Percentile",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "color": {
+              "mode": "palette-classic"
+            }
+          }
+        }
+      },
+      {
+        "id": 10,
+        "title": "📊 Error Rate",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 8,
+          "y": 20
+        },
+        "targets": [
+          {
+            "expr": "rate(oms_errors_total[5m])",
+            "legendFormat": "Error Rate",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 0.1},
+                {"color": "red", "value": 1.0}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 11,
+        "title": "🔍 Top Affected Locations",
+        "type": "bargauge",
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 16,
+          "y": 20
+        },
+        "targets": [
+          {
+            "expr": "topk(10, sum by (location) (oms_outages_by_location))",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "displayMode": "gradient",
+              "orientation": "horizontal"
+            },
+            "unit": "short"
+          }
+        }
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "severity",
+          "type": "query",
+          "query": "label_values(oms_outages, severity)",
+          "refresh": 1,
+          "includeAll": true,
+          "multi": true
+        },
+        {
+          "name": "location",
+          "type": "query",
+          "query": "label_values(oms_outages, location)",
+          "refresh": 1,
+          "includeAll": true,
+          "multi": true
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "name": "Outage Events",
+          "datasource": "Prometheus",
+          "expr": "oms_outage_events",
+          "iconColor": "red",
+          "enable": true,
+          "showIn": 0
+        }
+      ]
+    }
+  }
+}

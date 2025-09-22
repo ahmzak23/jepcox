@@ -1,0 +1,74 @@
+startDelaySeconds: 0
+ssl: false
+lowercaseOutputName: false
+lowercaseOutputLabelNames: false
+
+rules:
+  # Kafka Server Metrics
+  - pattern: kafka.server<type=BrokerTopicMetrics, name=MessagesInPerSec, topic=(.+)><>Count
+    name: kafka_server_brokertopicmetrics_messagesinpersec
+    labels:
+      topic: "$1"
+    type: COUNTER
+
+  - pattern: kafka.server<type=BrokerTopicMetrics, name=BytesInPerSec, topic=(.+)><>Count
+    name: kafka_server_brokertopicmetrics_bytesinpersec
+    labels:
+      topic: "$1"
+    type: COUNTER
+
+  - pattern: kafka.server<type=BrokerTopicMetrics, name=BytesOutPerSec, topic=(.+)><>Count
+    name: kafka_server_brokertopicmetrics_bytesoutpersec
+    labels:
+      topic: "$1"
+    type: COUNTER
+
+  - pattern: kafka.server<type=BrokerTopicMetrics, name=PartitionCount, topic=(.+)><>Value
+    name: kafka_server_brokertopicmetrics_partitioncount
+    labels:
+      topic: "$1"
+    type: GAUGE
+
+  # Kafka Controller Metrics
+  - pattern: kafka.controller<type=KafkaController, name=ActiveBrokerCount><>Value
+    name: kafka_controller_kafkacontroller_activebrokercount
+    type: GAUGE
+
+  - pattern: kafka.controller<type=KafkaController, name=OfflinePartitionsCount><>Value
+    name: kafka_controller_kafkacontroller_offlinepartitionscount
+    type: GAUGE
+
+  # Kafka Consumer Metrics
+  - pattern: kafka.consumer<type=consumer-fetch-manager-metrics, client-id=(.+)><>records-lag-max
+    name: kafka_consumer_lag_max
+    labels:
+      client_id: "$1"
+    type: GAUGE
+
+  - pattern: kafka.consumer<type=consumer-fetch-manager-metrics, client-id=(.+)><>records-lag-avg
+    name: kafka_consumer_lag_avg
+    labels:
+      client_id: "$1"
+    type: GAUGE
+
+  # Kafka Log Metrics
+  - pattern: kafka.log<type=LogFlushStats, name=LogFlushRateAndTimeMs><>Count
+    name: kafka_log_flush_rate
+    type: COUNTER
+
+  - pattern: kafka.log<type=LogFlushStats, name=LogFlushRateAndTimeMs><>Mean
+    name: kafka_log_flush_time_ms
+    type: GAUGE
+
+  # Kafka Network Metrics
+  - pattern: kafka.network<type=RequestMetrics, name=RequestsPerSec, request=(.+)><>Count
+    name: kafka_network_requests_per_sec
+    labels:
+      request: "$1"
+    type: COUNTER
+
+  - pattern: kafka.network<type=RequestMetrics, name=TotalTimeMs, request=(.+)><>Count
+    name: kafka_network_request_time_total
+    labels:
+      request: "$1"
+    type: COUNTER
