@@ -1,5 +1,61 @@
-/apisix_log/*
-!/apisix_log/.keep
+# Docker volumes and data
+etcd_data/
+web2_logs/
+zookeeper_data/
+zookeeper_logs/
+kafka_data/
 
-/etcd_data/*
-!/etcd_data/.keep
+# Logs
+*.log
+logs/
+apisix_log/
+grafana_backup/
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Node modules (if any)
+node_modules/
+
+# Backup files
+*.bak
+*.backup
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Grafana database
+grafana_backup/grafana/grafana.db
+grafana_backup/grafana.db
+
+# Certificates
+*.pem
+*.key
+*.crt
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
