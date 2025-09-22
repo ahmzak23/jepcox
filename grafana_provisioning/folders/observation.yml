@@ -1,8 +1,0 @@
-apiVersion: 1
-
-folders:
-  - name: observation
-    title: Observation
-    uid: observation
-    description: OMS System Observation and Monitoring Dashboards
-    tags: ["oms", "observation", "monitoring"]

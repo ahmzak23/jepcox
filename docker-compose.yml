@@ -91,27 +91,6 @@ services:
     depends_on:
       - kafka
 
-  prometheus:
-    image: prom/prometheus:v2.25.0
-    restart: always
-    volumes:
-      - ./prometheus_conf/prometheus.yml:/etc/prometheus/prometheus.yml
-    ports:
-      - "9090:9090"
-    networks:
-      apisix:
-
-  grafana:
-    image: grafana/grafana:latest
-    restart: always
-    ports:
-      - "3000:3000"
-    volumes:
-      - "./grafana_conf/provisioning:/etc/grafana/provisioning"
-      - "./grafana_conf/dashboards:/var/lib/grafana/dashboards"
-      - "./grafana_conf/config/grafana.ini:/etc/grafana/grafana.ini"
-    networks:
-      apisix:
 
   # Kafka Infrastructure for OMS System
   zookeeper:
@@ -179,22 +158,6 @@ services:
     networks:
       apisix:
 
-  # Schema Registry for message schema management
-  schema-registry:
-    image: confluentinc/cp-schema-registry:7.4.0
-    hostname: schema-registry
-    container_name: apisix-workshop-schema-registry
-    restart: always
-    depends_on:
-      - kafka
-    environment:
-      SCHEMA_REGISTRY_HOST_NAME: schema-registry
-      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'kafka:29092'
-      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
-    ports:
-      - "8081:8081"
-    networks:
-      apisix:
 
   # Kafka UI for management and monitoring
   kafka-ui:
@@ -205,7 +168,6 @@ services:
     depends_on:
       - kafka
       - kafka-rest
-      - schema-registry
     environment:
       KAFKA_CLUSTERS_0_NAME: oms-cluster
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
@@ -221,31 +183,6 @@ services:
     networks:
       apisix:
 
-  # Mock KAIFA HES Data Source (for testing)
-  kaifa-hes-mock:
-    image: nginx:1.19.0-alpine
-    hostname: kaifa-hes-mock
-    container_name: apisix-workshop-kaifa-hes-mock
-    restart: always
-    volumes:
-      - ./kaifa_hes_mock:/usr/share/nginx/html
-    ports:
-      - "8083:80"
-    networks:
-      apisix:
-
-  # OMS Application Mock (for testing)
-  oms-app-mock:
-    image: nginx:1.19.0-alpine
-    hostname: oms-app-mock
-    container_name: apisix-workshop-app-mock
-    restart: always
-    volumes:
-      - ./oms_app_mock:/usr/share/nginx/html
-    ports:
-      - "8084:80"
-    networks:
-      apisix:
 
   # HES-Kaifa Consumer Service
   hes-consumer:
