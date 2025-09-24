@@ -195,3 +195,4 @@ export DB_NAME=your-database
 - **APISIX Gateway**: `localhost:9080`
 - **Kafka UI**: `localhost:8080`
 - **Web Services**: `localhost:9081`, `localhost:9085`
+

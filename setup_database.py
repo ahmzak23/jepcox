@@ -132,3 +132,4 @@ if __name__ == "__main__":
         sys.exit(1)
     else:
         print("\n🎉 Setup completed successfully!")
+

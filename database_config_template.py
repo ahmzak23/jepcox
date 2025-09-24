@@ -73,3 +73,4 @@ if __name__ == "__main__":
     else:
         print("❌ Database connection failed!")
         print("\nPlease check your database configuration and ensure PostgreSQL is running.")
+

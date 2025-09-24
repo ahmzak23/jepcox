@@ -73,7 +73,7 @@ services:
     networks:
       apisix:
 
-  web2:
+  kaifa_hes_upstram:
     image: python:3.9-alpine
     restart: always
     volumes:
@@ -85,6 +85,24 @@ services:
       sh -c "
         pip install flask kafka-python &&
         python web2_kafka_service.py
+      "
+    networks:
+      apisix:
+    depends_on:
+      - kafka
+
+  scada_upstram:
+    image: python:3.9-alpine
+    restart: always
+    volumes:
+      - ./scada_kafka_service.py:/app/scada_kafka_service.py
+    ports:
+      - "9086:80/tcp"
+    working_dir: /app
+    command: >
+      sh -c "
+        pip install flask kafka-python &&
+        python scada_kafka_service.py
       "
     networks:
       apisix:
@@ -178,6 +196,26 @@ services:
       sh -c "
         pip install --no-cache-dir -r /workspace/requirements.txt &&
         python run_consumer.py --bootstrap-servers kafka:9092 --topic hes-kaifa-outage-topic --group-id hes-kaifa-consumer-group --output-dir /workspace/Kaifa-HES-Events/hes_kaifa_events_log --enable-database
+      "
+    depends_on:
+      - kafka
+    networks:
+      apisix:
+
+  # SCADA Consumer Service
+  scada-consumer:
+    image: python:3.9-slim
+    hostname: scada-consumer
+    container_name: apisix-workshop-scada-consumer
+    restart: always
+    volumes:
+      - ./Kaifa-HES-Events:/workspace/Kaifa-HES-Events
+      - ./requirements.txt:/workspace/requirements.txt
+    working_dir: /workspace/Kaifa-HES-Events
+    command: >
+      sh -c "
+        pip install --no-cache-dir -r /workspace/requirements.txt &&
+        python scada_consumer.py --bootstrap-servers kafka:9092 --topic scada-outage-topic --group-id scada-consumer-group --output-dir /workspace/Kaifa-HES-Events/SCADA
       "
     depends_on:
       - kafka
