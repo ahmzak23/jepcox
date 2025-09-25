@@ -34,7 +34,7 @@ def parse_arguments():
     
     parser.add_argument(
         '--output-dir',
-        default=ConsumerConfig.OUTPUT_DIR,
+        default='/workspace/hes-outbox',
         help=f'Output directory for JSON files (default: {ConsumerConfig.OUTPUT_DIR})'
     )
     

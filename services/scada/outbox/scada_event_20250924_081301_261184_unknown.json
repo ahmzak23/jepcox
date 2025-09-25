@@ -1,0 +1,21 @@
+{
+  "received_at": "2025-09-24T08:13:01.263133",
+  "kafka_partition": 2,
+  "kafka_offset": 3,
+  "event": {
+    "eventType": "MV_AlarmRestoration",
+    "substationId": "4A00000P456",
+    "feederId": "F00P456",
+    "mainStationId": "82001",
+    "alarmType": "Energized",
+    "timestamp": "2025-09-24T08:13:01.173Z",
+    "voltage": 11000,
+    "severity": "High",
+    "reason": "Cable Damage",
+    "coordinates": {
+      "lat": 31.95,
+      "lng": 35.98
+    }
+  },
+  "source": "SCADA-Simulator"
+}

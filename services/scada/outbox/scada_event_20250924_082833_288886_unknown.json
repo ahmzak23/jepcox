@@ -1,0 +1,21 @@
+{
+  "received_at": "2025-09-24T08:28:33.291149",
+  "kafka_partition": 1,
+  "kafka_offset": 5,
+  "event": {
+    "eventType": "MV_AlarmLossOfVoltage",
+    "substationId": "4A00000L663",
+    "feederId": "F00L663",
+    "mainStationId": "82001",
+    "alarmType": "De-energized",
+    "timestamp": "2025-09-24T08:28:33.230Z",
+    "voltage": 0,
+    "severity": "Critical",
+    "reason": "Weather Related",
+    "coordinates": {
+      "lat": 31.92,
+      "lng": 35.95
+    }
+  },
+  "source": "SCADA-Simulator"
+}

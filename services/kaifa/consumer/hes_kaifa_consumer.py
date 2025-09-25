@@ -148,8 +148,8 @@ class HESKaifaConsumer:
             # Convert Python dict to JSON string for PostgreSQL
             json_string = json.dumps(data)
             
-            # Call the PostgreSQL function to insert event
-            cursor.execute("SELECT insert_hes_event_from_json(%s::jsonb)", (json_string,))
+            # Call the PostgreSQL function to insert event (kaifa-prefixed schema design)
+            cursor.execute("SELECT insert_kaifa_event_from_json(%s::jsonb)", (json_string,))
             
             event_id = cursor.fetchone()[0]
             conn.commit()

@@ -1,0 +1,21 @@
+{
+  "received_at": "2025-09-24T08:12:54.838815",
+  "kafka_partition": 1,
+  "kafka_offset": 3,
+  "event": {
+    "eventType": "MV_AlarmRestoration",
+    "substationId": "4A00000L654",
+    "feederId": "F00L654",
+    "mainStationId": "82001",
+    "alarmType": "Energized",
+    "timestamp": "2025-09-24T08:12:54.689Z",
+    "voltage": 11000,
+    "severity": "High",
+    "reason": "Equipment Failure",
+    "coordinates": {
+      "lat": 31.98,
+      "lng": 36.01
+    }
+  },
+  "source": "SCADA-Simulator"
+}

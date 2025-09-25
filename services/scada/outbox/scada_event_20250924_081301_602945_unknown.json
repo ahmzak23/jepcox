@@ -1,0 +1,21 @@
+{
+  "received_at": "2025-09-24T08:13:01.604671",
+  "kafka_partition": 1,
+  "kafka_offset": 4,
+  "event": {
+    "eventType": "MV_AlarmRestoration",
+    "substationId": "4A00000S789",
+    "feederId": "F00S789",
+    "mainStationId": "82001",
+    "alarmType": "Energized",
+    "timestamp": "2025-09-24T08:13:01.563Z",
+    "voltage": 11000,
+    "severity": "Critical",
+    "reason": "Protection Trip",
+    "coordinates": {
+      "lat": 31.96,
+      "lng": 35.99
+    }
+  },
+  "source": "SCADA-Simulator"
+}

@@ -1,0 +1,21 @@
+{
+  "received_at": "2025-09-24T08:23:45.358355",
+  "kafka_partition": 2,
+  "kafka_offset": 4,
+  "event": {
+    "eventType": "MV_AlarmLossOfVoltage",
+    "substationId": "4A00000M321",
+    "feederId": "F00M321",
+    "mainStationId": "82001",
+    "alarmType": "De-energized",
+    "timestamp": "2025-09-24T08:23:45.194Z",
+    "voltage": 0,
+    "severity": "High",
+    "reason": "Cable Damage",
+    "coordinates": {
+      "lat": 31.97,
+      "lng": 36
+    }
+  },
+  "source": "SCADA-Simulator"
+}

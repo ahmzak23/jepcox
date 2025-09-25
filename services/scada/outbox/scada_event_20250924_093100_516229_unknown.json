@@ -1,0 +1,21 @@
+{
+  "received_at": "2025-09-24T09:31:00.518240",
+  "kafka_partition": 2,
+  "kafka_offset": 5,
+  "event": {
+    "eventType": "MV_AlarmRestoration",
+    "substationId": "4A00000L663",
+    "feederId": "F00L663",
+    "mainStationId": "82001",
+    "alarmType": "Energized",
+    "timestamp": "2025-09-24T09:31:00.452Z",
+    "voltage": 11000,
+    "severity": "Medium",
+    "reason": "Transformer Fault",
+    "coordinates": {
+      "lat": 31.92,
+      "lng": 35.95
+    }
+  },
+  "source": "SCADA-Simulator"
+}

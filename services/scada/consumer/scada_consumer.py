@@ -7,6 +7,8 @@ Consumes JSON events from scada-outage-topic and acknowledges processing.
 import json
 import os
 import logging
+import psycopg2
+import psycopg2.pool
 import signal
 import sys
 from datetime import datetime
@@ -31,11 +33,19 @@ class ScadaConsumer:
 
         self.consumer = None
         self.running = True
+        self.db_pool = None
 
         os.makedirs(self.output_dir, exist_ok=True)
         self._setup_logging()
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
+
+        # Initialize DB pool eagerly so we fail fast if DB is unreachable
+        try:
+            self._init_database_connection()
+        except Exception as e:
+            self.logger.error(f"Failed to initialize database: {e}")
+            raise
 
     def _setup_logging(self) -> None:
         logging.basicConfig(
@@ -53,6 +63,47 @@ class ScadaConsumer:
         self.running = False
         if self.consumer:
             self.consumer.close()
+        if self.db_pool:
+            self.db_pool.closeall()
+
+    def _init_database_connection(self) -> None:
+        # Load database config co-located with this consumer
+        try:
+            import os as _os, sys as _sys
+            _sys.path.append(_os.path.dirname(_os.path.abspath(__file__)))
+            from database_config import get_database_config  # type: ignore
+            db_cfg = get_database_config().get_connection_config()
+            self.db_pool = psycopg2.pool.SimpleConnectionPool(1, 10, **db_cfg)
+            self.logger.info("Database pool initialized for SCADA consumer")
+        except Exception as e:
+            self.logger.error(f"Failed to init DB pool: {e}")
+            raise
+
+    def _store_to_database(self, event: Dict[str, Any], source: str) -> bool:
+        if not self.db_pool:
+            self.logger.error("DB pool not initialized")
+            return False
+        try:
+            # enrich event with source for the insert function
+            payload = dict(event)
+            payload['source'] = source or 'scada-consumer'
+            conn = self.db_pool.getconn()
+            cur = conn.cursor()
+            cur.execute("SELECT insert_scada_event_from_json(%s::jsonb)", (json.dumps(payload),))
+            ev_id = cur.fetchone()[0]
+            conn.commit()
+            self.logger.info(f"Stored SCADA event {ev_id} to database")
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to store SCADA event: {e}")
+            if 'conn' in locals():
+                conn.rollback()
+            return False
+        finally:
+            if 'cur' in locals():
+                cur.close()
+            if 'conn' in locals():
+                self.db_pool.putconn(conn)
 
     def _create_consumer(self) -> KafkaConsumer:
         try:
@@ -102,34 +153,10 @@ class ScadaConsumer:
                 self.logger.warning("Invalid SCADA event payload; skipping")
                 return False
 
-            # Persist lightweight processing log
-            record = {
-                "timestamp": datetime.now().isoformat(),
-                "partition": message.partition,
-                "offset": message.offset,
-                "event": event,
-                "source": data.get("source", "") if isinstance(data, dict) else "",
-            }
-
-            # Append to processing log
-            log_path = os.path.join(self.output_dir, 'scada_events_processed.log')
-            with open(log_path, 'a', encoding='utf-8') as f:
-                f.write(json.dumps(record) + "\n")
-
-            # Persist full event JSON to file
-            ts = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
-            event_id_part = event.get('eventId') or event.get('issuerTrackingID') or "unknown"
-            filename = f"scada_event_{ts}_{event_id_part}.json"
-            file_path = os.path.join(self.output_dir, filename)
-            with open(file_path, 'w', encoding='utf-8') as jf:
-                json.dump({
-                    "received_at": datetime.now().isoformat(),
-                    "kafka_partition": message.partition,
-                    "kafka_offset": message.offset,
-                    "event": event,
-                    "source": record["source"],
-                }, jf, ensure_ascii=False, indent=2)
-
+            source = data.get("source", "") if isinstance(data, dict) else ""
+            stored = self._store_to_database(event, source)
+            if not stored:
+                return False
             # Acknowledge (placeholder)
             self._acknowledge(event)
             return True
@@ -169,7 +196,7 @@ class ScadaConsumer:
 
 
 def main():
-    output_dir = os.getenv('OUTPUT_DIR', '/workspace/Kaifa-HES-Events/SCADA')
+    output_dir = os.getenv('OUTPUT_DIR', '/workspace/scada-outbox')
     os.makedirs(output_dir, exist_ok=True)
     consumer = ScadaConsumer(
         bootstrap_servers=os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092'),

@@ -77,7 +77,7 @@ services:
     image: python:3.9-alpine
     restart: always
     volumes:
-      - ./web2_kafka_service.py:/app/web2_kafka_service.py
+      - ./services/kaifa/producer/web2_kafka_service.py:/app/web2_kafka_service.py
     ports:
       - "9085:80/tcp"
     working_dir: /app
@@ -95,7 +95,7 @@ services:
     image: python:3.9-alpine
     restart: always
     volumes:
-      - ./scada_kafka_service.py:/app/scada_kafka_service.py
+      - ./services/scada/producer/scada_kafka_service.py:/app/scada_kafka_service.py
     ports:
       - "9086:80/tcp"
     working_dir: /app
@@ -103,6 +103,25 @@ services:
       sh -c "
         pip install flask kafka-python &&
         python scada_kafka_service.py
+      "
+    networks:
+      apisix:
+    depends_on:
+      - kafka
+
+
+  call_center_upstream:
+    image: python:3.9-alpine
+    restart: always
+    volumes:
+      - ./services/call_center/producer/call_center_kafka_service.py:/app/call_center_kafka_service.py
+    ports:
+      - "9087:80/tcp"
+    working_dir: /app
+    command: >
+      sh -c "
+        pip install flask kafka-python &&
+        python call_center_kafka_service.py
       "
     networks:
       apisix:
@@ -189,13 +208,15 @@ services:
     container_name: apisix-workshop-hes-consumer
     restart: always
     volumes:
-      - ./Kaifa-HES-Events:/workspace/Kaifa-HES-Events
+      - ./services/kaifa/consumer:/workspace/hes-consumer
+      - ./services/kaifa/db:/workspace/hes-db
       - ./requirements.txt:/workspace/requirements.txt
-    working_dir: /workspace/Kaifa-HES-Events
+      - ./services/kaifa/outbox:/workspace/hes-outbox
+    working_dir: /workspace/hes-consumer
     command: >
       sh -c "
         pip install --no-cache-dir -r /workspace/requirements.txt &&
-        python run_consumer.py --bootstrap-servers kafka:9092 --topic hes-kaifa-outage-topic --group-id hes-kaifa-consumer-group --output-dir /workspace/Kaifa-HES-Events/hes_kaifa_events_log --enable-database
+        python run_consumer.py --bootstrap-servers kafka:9092 --topic hes-kaifa-outage-topic --group-id hes-kaifa-consumer-group --output-dir /workspace/hes-outbox --enable-database
       "
     depends_on:
       - kafka
@@ -209,13 +230,35 @@ services:
     container_name: apisix-workshop-scada-consumer
     restart: always
     volumes:
-      - ./Kaifa-HES-Events:/workspace/Kaifa-HES-Events
+      - ./services/scada/consumer:/workspace/scada-consumer
       - ./requirements.txt:/workspace/requirements.txt
-    working_dir: /workspace/Kaifa-HES-Events
+      - ./services/scada/outbox:/workspace/scada-outbox
+    working_dir: /workspace/scada-consumer
     command: >
       sh -c "
         pip install --no-cache-dir -r /workspace/requirements.txt &&
-        python scada_consumer.py --bootstrap-servers kafka:9092 --topic scada-outage-topic --group-id scada-consumer-group --output-dir /workspace/Kaifa-HES-Events/SCADA
+        python scada_consumer.py --bootstrap-servers kafka:9092 --topic scada-outage-topic --group-id scada-consumer-group --output-dir /workspace/scada-outbox
+      "
+    depends_on:
+      - kafka
+    networks:
+      apisix:
+
+  # Call Center Consumer Service
+  call-center-consumer:
+    image: python:3.9-slim
+    hostname: call-center-consumer
+    container_name: apisix-workshop-call-center-consumer
+    restart: always
+    volumes:
+      - ./services/call_center/consumer:/workspace/call-center-consumer
+      - ./requirements.txt:/workspace/requirements.txt
+      - ./services/call_center/outbox:/workspace/call-center-outbox
+    working_dir: /workspace/call-center-consumer
+    command: >
+      sh -c "
+        pip install --no-cache-dir -r /workspace/requirements.txt &&
+        python call_center_consumer.py --bootstrap-servers kafka:9092 --topic call_center_upstream_topic --group-id call-center-consumer-group --output-dir /workspace/call-center-outbox
       "
     depends_on:
       - kafka

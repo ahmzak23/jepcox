@@ -14,7 +14,7 @@ class DatabaseConfig:
         """Initialize database configuration from environment variables or defaults."""
         self.host = os.getenv('DB_HOST', 'host.docker.internal')
         self.port = int(os.getenv('DB_PORT', '5432'))
-        self.database = os.getenv('DB_NAME', 'hes_kaifa_events')
+        self.database = os.getenv('DB_NAME', 'oms_db')
         self.user = os.getenv('DB_USER', 'web')
         self.password = os.getenv('DB_PASSWORD', '123456')
         self.ssl_mode = os.getenv('DB_SSL_MODE', 'prefer')
