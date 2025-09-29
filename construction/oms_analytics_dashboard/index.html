@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OMS Analytics Dashboard - Advanced Reporting</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .header .controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-left: auto;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-group label {
+            font-size: 0.9rem;
+            color: #555;
+        }
+
+        .control-group select, .control-group input {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: background 0.3s ease;
+        }
+
+        .btn:hover {
+            background: #2980b9;
+        }
+
+        .btn.secondary {
+            background: #95a5a6;
+        }
+
+        .btn.secondary:hover {
+            background: #7f8c8d;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #ecf0f1;
+        }
+
+        .chart-title {
+            color: #2c3e50;
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 1rem;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #3498db;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            color: #7f8c8d;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            border-left: 4px solid #dc3545;
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .summary-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .summary-card h3 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .tabs {
+            display: flex;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            padding: 0.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            color: #7f8c8d;
+        }
+
+        .tab.active {
+            background: #3498db;
+            color: white;
+        }
+
+        .tab:hover:not(.active) {
+            background: rgba(52, 152, 219, 0.1);
+            color: #3498db;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .header {
+                padding: 1rem;
+            }
+            
+            .header .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .analytics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>
+            <i class="fas fa-chart-line"></i>
+            OMS Analytics Dashboard
+        </h1>
+        <div class="controls">
+            <div class="control-group">
+                <label for="daysFilter">Period:</label>
+                <select id="daysFilter">
+                    <option value="7">Last 7 days</option>
+                    <option value="30" selected>Last 30 days</option>
+                    <option value="90">Last 90 days</option>
+                    <option value="365">Last year</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="granularityFilter">Granularity:</label>
+                <select id="granularityFilter">
+                    <option value="hour">Hourly</option>
+                    <option value="day" selected>Daily</option>
+                    <option value="week">Weekly</option>
+                    <option value="month">Monthly</option>
+                </select>
+            </div>
+            <button class="btn" onclick="refreshAnalytics()">
+                <i class="fas fa-sync-alt"></i>
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Summary Statistics -->
+        <div class="summary-stats" id="summaryStats">
+            <div class="loading">
+                <i class="fas fa-spinner fa-spin"></i> Loading summary statistics...
+            </div>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('trends')">
+                <i class="fas fa-chart-line"></i> Outage Trends
+            </div>
+            <div class="tab" onclick="switchTab('performance')">
+                <i class="fas fa-users"></i> Crew Performance
+            </div>
+            <div class="tab" onclick="switchTab('sources')">
+                <i class="fas fa-server"></i> Source Reliability
+            </div>
+            <div class="tab" onclick="switchTab('geographic')">
+                <i class="fas fa-map-marker-alt"></i> Geographic Analysis
+            </div>
+            <div class="tab" onclick="switchTab('impact')">
+                <i class="fas fa-users-cog"></i> Customer Impact
+            </div>
+        </div>
+
+        <!-- Tab Contents -->
+        <div class="tab-content active" id="trends">
+            <div class="analytics-grid">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">
+                            <i class="fas fa-chart-area"></i>
+                            Outage Trends Over Time
+                        </h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="outageTrendsChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">
+                            <i class="fas fa-chart-pie"></i>
+                            Severity Distribution
+                        </h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="severityChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">
+                            <i class="fas fa-chart-bar"></i>
+                            Customer Impact Trends
+                        </h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="customerImpactChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">
+                            <i class="fas fa-clock"></i>
+                            Restoration Time Trends
+                        </h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="restorationTimeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="performance">
+            <div class="analytics-grid">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">
+                            <i class="fas fa-chart-bar"></i>
+                            Crew Completion Rates
+                        </h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="crewCompletionChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">
+                            <i class="fas fa-chart-line"></i>
+                            Response Time Trends
+                        </h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="responseTimeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="sources">
+            <div class="analytics-grid">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">
+                            <i class="fas fa-chart-pie"></i>
+                            Source Reliability
+                        </h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="sourceReliabilityChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">
+                            <i class="fas fa-chart-bar"></i>
+                            Source Accuracy Rates
+                        </h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="sourceAccuracyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="geographic">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3 class="chart-title">
+                        <i class="fas fa-map"></i>
+                        Geographic Hotspots
+                    </h3>
+                    <div class="control-group">
+                        <label for="radiusFilter">Radius (km):</label>
+                        <select id="radiusFilter">
+                            <option value="2.0">2 km</option>
+                            <option value="5.0" selected>5 km</option>
+                            <option value="10.0">10 km</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="hotspotsList">
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i> Analyzing geographic patterns...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="impact">
+            <div class="analytics-grid">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">
+                            <i class="fas fa-chart-area"></i>
+                            Customer Impact Trends
+                        </h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="impactTrendsChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">
+                            <i class="fas fa-chart-bar"></i>
+                            Major vs Minor Outages
+                        </h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="majorMinorChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:9100';
+        let charts = {};
+        let currentTab = 'trends';
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAnalytics();
+            
+            // Add event listeners for filters
+            document.getElementById('daysFilter').addEventListener('change', loadAnalytics);
+            document.getElementById('granularityFilter').addEventListener('change', loadAnalytics);
+            document.getElementById('radiusFilter').addEventListener('change', loadGeographicHotspots);
+        });
+
+        function switchTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+            
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+            
+            currentTab = tabName;
+            
+            // Load specific analytics if needed
+            if (tabName === 'geographic') {
+                loadGeographicHotspots();
+            }
+        }
+
+        async function loadAnalytics() {
+            try {
+                const days = document.getElementById('daysFilter').value;
+                const granularity = document.getElementById('granularityFilter').value;
+                
+                // Load all analytics in parallel
+                await Promise.all([
+                    loadSummaryStats(days),
+                    loadOutageTrends(days, granularity),
+                    loadCrewPerformance(days),
+                    loadSourceReliability(days),
+                    loadCustomerImpact(days, granularity)
+                ]);
+                
+            } catch (error) {
+                console.error('Error loading analytics:', error);
+                showError('Failed to load analytics data: ' + error.message);
+            }
+        }
+
+        async function loadSummaryStats(days) {
+            try {
+                const [trendsResponse, performanceResponse, sourcesResponse] = await Promise.all([
+                    fetch(`${API_BASE}/api/oms/analytics/outage-trends?days=${days}&granularity=day`),
+                    fetch(`${API_BASE}/api/oms/analytics/crew-performance?days=${days}`),
+                    fetch(`${API_BASE}/api/oms/analytics/source-reliability?days=${days}`)
+                ]);
+
+                const trends = await trendsResponse.json();
+                const performance = await performanceResponse.json();
+                const sources = await sourcesResponse.json();
+
+                const summaryHTML = `
+                    <div class="summary-card">
+                        <h3><i class="fas fa-exclamation-triangle"></i> Outage Summary</h3>
+                        <div class="stat-row">
+                            <span class="stat-label">Total Outages:</span>
+                            <span class="stat-value">${trends.summary.total_outages}</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Avg Confidence:</span>
+                            <span class="stat-value">${(trends.summary.avg_confidence * 100).toFixed(1)}%</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Customers Affected:</span>
+                            <span class="stat-value">${trends.summary.total_customers_affected.toLocaleString()}</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Avg Duration:</span>
+                            <span class="stat-value">${trends.summary.avg_duration_hours ? trends.summary.avg_duration_hours.toFixed(1) + 'h' : 'N/A'}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-card">
+                        <h3><i class="fas fa-users"></i> Crew Performance</h3>
+                        <div class="stat-row">
+                            <span class="stat-label">Total Assignments:</span>
+                            <span class="stat-value">${performance.summary.total_assignments}</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Completion Rate:</span>
+                            <span class="stat-value">${performance.summary.overall_completion_rate.toFixed(1)}%</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Avg Response:</span>
+                            <span class="stat-value">${performance.summary.avg_response_time_hours ? performance.summary.avg_response_time_hours.toFixed(1) + 'h' : 'N/A'}</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Avg Work Time:</span>
+                            <span class="stat-value">${performance.summary.avg_work_duration_hours ? performance.summary.avg_work_duration_hours.toFixed(1) + 'h' : 'N/A'}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-card">
+                        <h3><i class="fas fa-server"></i> Source Analysis</h3>
+                        <div class="stat-row">
+                            <span class="stat-label">Total Sources:</span>
+                            <span class="stat-value">${sources.summary.total_sources}</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Most Reliable:</span>
+                            <span class="stat-value">${sources.summary.most_reliable_source || 'N/A'}</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Most Active:</span>
+                            <span class="stat-value">${sources.summary.most_active_source || 'N/A'}</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Analysis Period:</span>
+                            <span class="stat-value">${sources.summary.analysis_period_days} days</span>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('summaryStats').innerHTML = summaryHTML;
+                
+            } catch (error) {
+                console.error('Error loading summary stats:', error);
+            }
+        }
+
+        async function loadOutageTrends(days, granularity) {
+            try {
+                const response = await fetch(`${API_BASE}/api/oms/analytics/outage-trends?days=${days}&granularity=${granularity}`);
+                const data = await response.json();
+
+                // Outage Trends Chart
+                createOutageTrendsChart(data.trends);
+                
+                // Severity Distribution Chart
+                createSeverityChart(data.trends);
+                
+                // Customer Impact Chart
+                createCustomerImpactChart(data.trends);
+                
+                // Restoration Time Chart
+                createRestorationTimeChart(data.trends);
+                
+            } catch (error) {
+                console.error('Error loading outage trends:', error);
+            }
+        }
+
+        async function loadCrewPerformance(days) {
+            try {
+                const response = await fetch(`${API_BASE}/api/oms/analytics/crew-performance?days=${days}`);
+                const data = await response.json();
+
+                createCrewCompletionChart(data.crew_performance);
+                createResponseTimeChart(data.crew_performance);
+                
+            } catch (error) {
+                console.error('Error loading crew performance:', error);
+            }
+        }
+
+        async function loadSourceReliability(days) {
+            try {
+                const response = await fetch(`${API_BASE}/api/oms/analytics/source-reliability?days=${days}`);
+                const data = await response.json();
+
+                createSourceReliabilityChart(data.source_reliability);
+                createSourceAccuracyChart(data.source_reliability);
+                
+            } catch (error) {
+                console.error('Error loading source reliability:', error);
+            }
+        }
+
+        async function loadGeographicHotspots() {
+            try {
+                const days = document.getElementById('daysFilter').value;
+                const radius = document.getElementById('radiusFilter').value;
+                
+                const response = await fetch(`${API_BASE}/api/oms/analytics/geographic-hotspots?days=${days}&radius_km=${radius}`);
+                const data = await response.json();
+
+                displayHotspots(data.hotspots, data.summary);
+                
+            } catch (error) {
+                console.error('Error loading geographic hotspots:', error);
+            }
+        }
+
+        async function loadCustomerImpact(days, granularity) {
+            try {
+                const response = await fetch(`${API_BASE}/api/oms/analytics/customer-impact?days=${days}&granularity=${granularity}`);
+                const data = await response.json();
+
+                createImpactTrendsChart(data.impact_trends);
+                createMajorMinorChart(data.impact_trends);
+                
+            } catch (error) {
+                console.error('Error loading customer impact:', error);
+            }
+        }
+
+        function createOutageTrendsChart(trends) {
+            const ctx = document.getElementById('outageTrendsChart').getContext('2d');
+            
+            if (charts.outageTrends) {
+                charts.outageTrends.destroy();
+            }
+            
+            charts.outageTrends = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: trends.map(t => new Date(t.period).toLocaleDateString()),
+                    datasets: [
+                        {
+                            label: 'Total Outages',
+                            data: trends.map(t => t.outage_count),
+                            borderColor: '#3498db',
+                            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Restored',
+                            data: trends.map(t => t.restored_count),
+                            borderColor: '#27ae60',
+                            backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function createSeverityChart(trends) {
+            const ctx = document.getElementById('severityChart').getContext('2d');
+            
+            if (charts.severity) {
+                charts.severity.destroy();
+            }
+            
+            // Aggregate severity data
+            const severityData = trends.reduce((acc, trend) => {
+                acc.critical += trend.severity_breakdown.critical;
+                acc.high += trend.severity_breakdown.high;
+                acc.medium += trend.severity_breakdown.medium;
+                acc.low += trend.severity_breakdown.low;
+                return acc;
+            }, { critical: 0, high: 0, medium: 0, low: 0 });
+            
+            charts.severity = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Critical', 'High', 'Medium', 'Low'],
+                    datasets: [{
+                        data: [severityData.critical, severityData.high, severityData.medium, severityData.low],
+                        backgroundColor: ['#e74c3c', '#f39c12', '#f1c40f', '#27ae60']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        function createCustomerImpactChart(trends) {
+            const ctx = document.getElementById('customerImpactChart').getContext('2d');
+            
+            if (charts.customerImpact) {
+                charts.customerImpact.destroy();
+            }
+            
+            charts.customerImpact = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: trends.map(t => new Date(t.period).toLocaleDateString()),
+                    datasets: [{
+                        label: 'Customers Affected',
+                        data: trends.map(t => t.total_customers_affected),
+                        backgroundColor: 'rgba(52, 152, 219, 0.8)',
+                        borderColor: '#3498db',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function createRestorationTimeChart(trends) {
+            const ctx = document.getElementById('restorationTimeChart').getContext('2d');
+            
+            if (charts.restorationTime) {
+                charts.restorationTime.destroy();
+            }
+            
+            charts.restorationTime = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: trends.map(t => new Date(t.period).toLocaleDateString()),
+                    datasets: [{
+                        label: 'Avg Restoration Time (hours)',
+                        data: trends.map(t => t.avg_duration_hours || 0),
+                        borderColor: '#9b59b6',
+                        backgroundColor: 'rgba(155, 89, 182, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function createCrewCompletionChart(crews) {
+            const ctx = document.getElementById('crewCompletionChart').getContext('2d');
+            
+            if (charts.crewCompletion) {
+                charts.crewCompletion.destroy();
+            }
+            
+            charts.crewCompletion = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: crews.map(c => c.crew_name),
+                    datasets: [{
+                        label: 'Completion Rate (%)',
+                        data: crews.map(c => c.completion_rate),
+                        backgroundColor: 'rgba(39, 174, 96, 0.8)',
+                        borderColor: '#27ae60',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    }
+                }
+            });
+        }
+
+        function createResponseTimeChart(crews) {
+            const ctx = document.getElementById('responseTimeChart').getContext('2d');
+            
+            if (charts.responseTime) {
+                charts.responseTime.destroy();
+            }
+            
+            charts.responseTime = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: crews.map(c => c.crew_name),
+                    datasets: [{
+                        label: 'Avg Response Time (hours)',
+                        data: crews.map(c => c.avg_response_time_hours || 0),
+                        backgroundColor: 'rgba(230, 126, 34, 0.8)',
+                        borderColor: '#e67e22',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function createSourceReliabilityChart(sources) {
+            const ctx = document.getElementById('sourceReliabilityChart').getContext('2d');
+            
+            if (charts.sourceReliability) {
+                charts.sourceReliability.destroy();
+            }
+            
+            charts.sourceReliability = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: sources.map(s => s.source_type.toUpperCase()),
+                    datasets: [{
+                        data: sources.map(s => s.total_events),
+                        backgroundColor: ['#3498db', '#e74c3c', '#f39c12', '#27ae60']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        function createSourceAccuracyChart(sources) {
+            const ctx = document.getElementById('sourceAccuracyChart').getContext('2d');
+            
+            if (charts.sourceAccuracy) {
+                charts.sourceAccuracy.destroy();
+            }
+            
+            charts.sourceAccuracy = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sources.map(s => s.source_type.toUpperCase()),
+                    datasets: [{
+                        label: 'Accuracy Rate (%)',
+                        data: sources.map(s => s.accuracy_rate || 0),
+                        backgroundColor: 'rgba(52, 152, 219, 0.8)',
+                        borderColor: '#3498db',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    }
+                }
+            });
+        }
+
+        function createImpactTrendsChart(trends) {
+            const ctx = document.getElementById('impactTrendsChart').getContext('2d');
+            
+            if (charts.impactTrends) {
+                charts.impactTrends.destroy();
+            }
+            
+            // Handle empty or undefined trends data
+            if (!trends || !Array.isArray(trends) || trends.length === 0) {
+                charts.impactTrends = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: ['No Data'],
+                        datasets: [{
+                            label: 'No Data Available',
+                            data: [0],
+                            borderColor: '#95a5a6',
+                            backgroundColor: 'rgba(149, 165, 166, 0.1)',
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+                return;
+            }
+            
+            charts.impactTrends = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: trends.map(t => new Date(t.period).toLocaleDateString()),
+                    datasets: [
+                        {
+                            label: 'Total Customers Affected',
+                            data: trends.map(t => t.total_customers_affected),
+                            borderColor: '#e74c3c',
+                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Major Outages (>100 customers)',
+                            data: trends.map(t => t.major_outages),
+                            borderColor: '#f39c12',
+                            backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function createMajorMinorChart(trends) {
+            const ctx = document.getElementById('majorMinorChart').getContext('2d');
+            
+            if (charts.majorMinor) {
+                charts.majorMinor.destroy();
+            }
+            
+            // Handle empty or undefined trends data
+            if (!trends || !Array.isArray(trends) || trends.length === 0) {
+                charts.majorMinor = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['No Data'],
+                        datasets: [{
+                            label: 'No Data Available',
+                            data: [0],
+                            backgroundColor: 'rgba(149, 165, 166, 0.8)'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+                return;
+            }
+            
+            charts.majorMinor = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: trends.map(t => new Date(t.period).toLocaleDateString()),
+                    datasets: [
+                        {
+                            label: 'Major Outages (>100 customers)',
+                            data: trends.map(t => t.major_outages),
+                            backgroundColor: 'rgba(231, 76, 60, 0.8)'
+                        },
+                        {
+                            label: 'Minor Outages (<100 customers)',
+                            data: trends.map(t => t.outage_count - t.major_outages),
+                            backgroundColor: 'rgba(52, 152, 219, 0.8)'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            stacked: true
+                        },
+                        y: {
+                            beginAtZero: true,
+                            stacked: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function displayHotspots(hotspots, summary) {
+            const container = document.getElementById('hotspotsList');
+            
+            if (hotspots.length === 0) {
+                container.innerHTML = '<div class="loading">No geographic hotspots found in the selected period.</div>';
+                return;
+            }
+            
+            const hotspotsHTML = `
+                <div style="margin-bottom: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                    <h4>Analysis Summary</h4>
+                    <p><strong>Total Hotspots:</strong> ${summary.total_hotspots}</p>
+                    <p><strong>Outages Analyzed:</strong> ${summary.total_outages_analyzed}</p>
+                    <p><strong>Outages in Hotspots:</strong> ${summary.outages_in_hotspots}</p>
+                    <p><strong>Clustering Radius:</strong> ${summary.clustering_radius_km} km</p>
+                </div>
+                
+                <div style="display: grid; gap: 1rem;">
+                    ${hotspots.map(hotspot => `
+                        <div style="padding: 1rem; border: 1px solid #ddd; border-radius: 8px; background: white;">
+                            <h4>Hotspot #${hotspot.hotspot_id}</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                                <div>
+                                    <strong>Location:</strong><br>
+                                    ${hotspot.center_latitude.toFixed(4)}, ${hotspot.center_longitude.toFixed(4)}
+                                </div>
+                                <div>
+                                    <strong>Outage Count:</strong> ${hotspot.outage_count}<br>
+                                    <strong>Customers Affected:</strong> ${hotspot.total_customers_affected.toLocaleString()}
+                                </div>
+                                <div>
+                                    <strong>Severity Breakdown:</strong><br>
+                                    Critical: ${hotspot.severity_breakdown.critical} | 
+                                    High: ${hotspot.severity_breakdown.high} | 
+                                    Medium: ${hotspot.severity_breakdown.medium} | 
+                                    Low: ${hotspot.severity_breakdown.low}
+                                </div>
+                                <div>
+                                    <strong>Time Period:</strong><br>
+                                    ${new Date(hotspot.first_outage).toLocaleDateString()} - ${new Date(hotspot.latest_outage).toLocaleDateString()}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            container.innerHTML = hotspotsHTML;
+        }
+
+        function refreshAnalytics() {
+            loadAnalytics();
+        }
+
+        function showError(message) {
+            const container = document.querySelector('.container');
+            container.insertAdjacentHTML('afterbegin', `<div class="error">${message}</div>`);
+        }
+    </script>
+</body>
+</html>
+

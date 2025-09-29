@@ -219,6 +219,65 @@ services:
     networks:
       apisix:
 
+  # --- Under Construction: OMS Ingestion API (FastAPI) ---
+  oms-api:
+    build:
+      context: ./construction/oms_ingestion_service
+      dockerfile: Dockerfile
+    container_name: apisix-workshop-oms-api
+    restart: always
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    volumes:
+      - ./construction/oms_ingestion_service:/app
+      - ./construction/oms_correlated_schema.sql:/bootstrap/oms_correlated_schema.sql:ro
+    ports:
+      - "9100:8000"
+    networks:
+      apisix:
+
+  # --- Under Construction: OMS Migrator (batch/backfill) ---
+  oms-migrator:
+    build:
+      context: ./construction/oms_migrator
+      dockerfile: Dockerfile
+    container_name: apisix-workshop-oms-migrator
+    restart: "no"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      RUN_MODE: one_shot
+    volumes:
+      - ./construction/oms_data_migration.sql:/work/oms_data_migration.sql:ro
+    networks:
+      apisix:
+
+  # --- Under Construction: OMS Dashboard (Web UI) ---
+  oms-dashboard:
+    build:
+      context: ./construction/oms_dashboard
+      dockerfile: Dockerfile
+    container_name: apisix-workshop-oms-dashboard
+    restart: always
+    ports:
+      - "9200:80"
+    depends_on:
+      - oms-api
+    networks:
+      apisix:
+
+  # --- Under Construction: OMS Analytics Dashboard (Advanced Reporting) ---
+  oms-analytics:
+    build:
+      context: ./construction/oms_analytics_dashboard
+      dockerfile: Dockerfile
+    container_name: apisix-workshop-oms-analytics
+    restart: always
+    ports:
+      - "9300:80"
+    depends_on:
+      - oms-api
+    networks:
+      apisix:
 
   # HES-Kaifa Consumer Service
   hes-consumer:
@@ -226,6 +285,8 @@ services:
     hostname: hes-consumer
     container_name: apisix-workshop-hes-consumer
     restart: always
+    environment:
+      - OMS_API_URL=http://oms-api:8000
     volumes:
       - ./services/kaifa/consumer:/workspace/hes-consumer
       - ./services/kaifa/db:/workspace/hes-db
@@ -239,6 +300,7 @@ services:
       "
     depends_on:
       - kafka
+      - oms-api
     networks:
       apisix:
 
@@ -248,6 +310,8 @@ services:
     hostname: scada-consumer
     container_name: apisix-workshop-scada-consumer
     restart: always
+    environment:
+      - OMS_API_URL=http://oms-api:8000
     volumes:
       - ./services/scada/consumer:/workspace/scada-consumer
       - ./requirements.txt:/workspace/requirements.txt
@@ -260,6 +324,7 @@ services:
       "
     depends_on:
       - kafka
+      - oms-api
     networks:
       apisix:
 
@@ -269,6 +334,8 @@ services:
     hostname: call-center-consumer
     container_name: apisix-workshop-call-center-consumer
     restart: always
+    environment:
+      - OMS_API_URL=http://oms-api:8000
     volumes:
       - ./services/call_center/consumer:/workspace/call-center-consumer
       - ./requirements.txt:/workspace/requirements.txt
@@ -281,6 +348,7 @@ services:
       "
     depends_on:
       - kafka
+      - oms-api
     networks:
       apisix:
 
@@ -290,6 +358,8 @@ services:
     hostname: onu-consumer
     container_name: apisix-workshop-onu-consumer
     restart: always
+    environment:
+      - OMS_API_URL=http://oms-api:8000
     volumes:
       - ./services/onu/consumer:/workspace/onu-consumer
       - ./services/onu/db:/workspace/onu-db
@@ -303,6 +373,7 @@ services:
       "
     depends_on:
       - kafka
+      - oms-api
     networks:
       apisix:
 

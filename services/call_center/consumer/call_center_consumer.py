@@ -16,6 +16,7 @@ from kafka import KafkaConsumer
 from kafka.errors import KafkaError
 import psycopg2
 import psycopg2.pool
+import requests
 
 
 class CallCenterConsumer:
@@ -83,6 +84,32 @@ class CallCenterConsumer:
             ticket_id = cur.fetchone()[0]
             conn.commit()
             self.logger.info(f"Stored Call Center ticket {ticket_id}")
+
+            # Optionally call OMS ingestion API for real-time correlation
+            # Enable by setting OMS_API_URL (e.g., http://localhost:9100)
+            oms_api_url = os.getenv('OMS_API_URL')
+            if oms_api_url:
+                try:
+                    payload = {
+                        "event_type": "outage",
+                        "source_type": "call_center",
+                        "source_event_id": f"cc_{ticket_id}",
+                        "timestamp": payload.get('timestamp', datetime.now().isoformat()),
+                        "latitude": None,  # Call center events typically don't have lat/lng
+                        "longitude": None,
+                        "correlation_window_minutes": int(os.getenv('OMS_CORR_WINDOW_MIN', '30')),
+                        "spatial_radius_meters": int(os.getenv('OMS_SPATIAL_RADIUS_M', '1000')),
+                        "metadata": {
+                            "ticket_id": payload.get('ticketId'),
+                            "phone": payload.get('customer', {}).get('phone'),
+                            "address": payload.get('customer', {}).get('address'),
+                            "meter_number": payload.get('customer', {}).get('meterNumber')
+                        }
+                    }
+                    requests.post(f"{oms_api_url}/api/oms/events/correlate", json=payload, timeout=5)
+                except Exception as e:
+                    self.logger.warning(f"OMS API call failed (non-blocking): {e}")
+
             return True
         except Exception as e:
             self.logger.error(f"Failed to store Call Center ticket: {e}")

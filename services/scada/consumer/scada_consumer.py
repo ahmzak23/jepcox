@@ -16,6 +16,7 @@ from typing import Dict, Any
 
 from kafka import KafkaConsumer
 from kafka.errors import KafkaError
+import requests
 
 
 class ScadaConsumer:
@@ -93,6 +94,33 @@ class ScadaConsumer:
             ev_id = cur.fetchone()[0]
             conn.commit()
             self.logger.info(f"Stored SCADA event {ev_id} to database")
+
+            # Optionally call OMS ingestion API for real-time correlation
+            # Enable by setting OMS_API_URL (e.g., http://localhost:9100)
+            oms_api_url = os.getenv('OMS_API_URL')
+            if oms_api_url:
+                try:
+                    payload = {
+                        "event_type": "outage",
+                        "source_type": "scada",
+                        "source_event_id": f"scada_{ev_id}",
+                        "timestamp": event.get('timestamp', datetime.now().isoformat()),
+                        "latitude": event.get('latitude'),
+                        "longitude": event.get('longitude'),
+                        "correlation_window_minutes": int(os.getenv('OMS_CORR_WINDOW_MIN', '30')),
+                        "spatial_radius_meters": int(os.getenv('OMS_SPATIAL_RADIUS_M', '1000')),
+                        "metadata": {
+                            "event_type": event.get('eventType'),
+                            "substation_id": event.get('substationId'),
+                            "feeder_id": event.get('feederId'),
+                            "alarm_type": event.get('alarmType'),
+                            "voltage": event.get('voltage')
+                        }
+                    }
+                    requests.post(f"{oms_api_url}/api/oms/events/correlate", json=payload, timeout=5)
+                except Exception as e:
+                    self.logger.warning(f"OMS API call failed (non-blocking): {e}")
+
             return True
         except Exception as e:
             self.logger.error(f"Failed to store SCADA event: {e}")

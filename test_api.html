@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>API Endpoint Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        const API_BASE = 'http://localhost:9100';
+        
+        async function testAPI() {
+            const results = document.getElementById('results');
+            
+            // Test statistics endpoint
+            try {
+                const response = await fetch(`${API_BASE}/api/oms/statistics`);
+                const data = await response.json();
+                results.innerHTML += `<p>✅ Statistics API: ${response.status} - ${JSON.stringify(data).substring(0, 100)}...</p>`;
+            } catch (error) {
+                results.innerHTML += `<p>❌ Statistics API Error: ${error.message}</p>`;
+            }
+            
+            // Test outages endpoint
+            try {
+                const response = await fetch(`${API_BASE}/api/oms/outages`);
+                const data = await response.json();
+                results.innerHTML += `<p>✅ Outages API: ${response.status} - ${data.outages?.length || 0} outages</p>`;
+            } catch (error) {
+                results.innerHTML += `<p>❌ Outages API Error: ${error.message}</p>`;
+            }
+            
+            // Test analytics endpoint
+            try {
+                const response = await fetch(`${API_BASE}/api/oms/analytics/outage-trends?days=24&granularity=hour`);
+                const data = await response.json();
+                results.innerHTML += `<p>✅ Analytics API: ${response.status} - ${data.trends?.length || 0} trends</p>`;
+            } catch (error) {
+                results.innerHTML += `<p>❌ Analytics API Error: ${error.message}</p>`;
+            }
+            
+            // Test crews endpoint
+            try {
+                const response = await fetch(`${API_BASE}/api/oms/crews`);
+                const data = await response.json();
+                results.innerHTML += `<p>✅ Crews API: ${response.status} - ${data.active_crews?.length || 0} crews</p>`;
+            } catch (error) {
+                results.innerHTML += `<p>❌ Crews API Error: ${error.message}</p>`;
+            }
+            
+            // Test correlations endpoint
+            try {
+                const response = await fetch(`${API_BASE}/api/oms/correlations`);
+                const data = await response.json();
+                results.innerHTML += `<p>✅ Correlations API: ${response.status} - ${data.correlations?.length || 0} correlations</p>`;
+            } catch (error) {
+                results.innerHTML += `<p>❌ Correlations API Error: ${error.message}</p>`;
+            }
+        }
+        
+        // Run test when page loads
+        window.onload = testAPI;
+    </script>
+</body>
+</html>

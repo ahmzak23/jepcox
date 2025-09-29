@@ -16,6 +16,7 @@ from kafka import KafkaConsumer
 from kafka.errors import KafkaError
 import psycopg2
 import psycopg2.pool
+import requests
 
 
 class OnuConsumer:
@@ -167,6 +168,34 @@ class OnuConsumer:
 
             # Store to database
             stored = self._store_to_database(event_data)
+
+            # Optionally call OMS ingestion API for real-time correlation
+            # Enable by setting OMS_API_URL (e.g., http://localhost:9100)
+            oms_api_url = os.getenv('OMS_API_URL')
+            if oms_api_url:
+                try:
+                    payload = {
+                    	"event_type": "outage",
+                    	"source_type": "onu",
+                    	"source_event_id": event_data.get("eventId"),
+                    	"timestamp": event_data.get("timestamp"),
+                    	"latitude": None,
+                    	"longitude": None,
+                    	"correlation_window_minutes": int(os.getenv('OMS_CORR_WINDOW_MIN', '30')),
+                    	"spatial_radius_meters": int(os.getenv('OMS_SPATIAL_RADIUS_M', '1000')),
+                    }
+                    # If location is embedded
+                    loc = event_data.get("location") or {}
+                    if isinstance(loc, dict):
+                        try:
+                            payload["latitude"] = float(loc.get("lat")) if loc.get("lat") is not None else None
+                            payload["longitude"] = float(loc.get("lng")) if loc.get("lng") is not None else None
+                        except Exception:
+                            pass
+                    requests.post(f"{oms_api_url}/api/oms/events/correlate", json=payload, timeout=5)
+                except Exception as e:
+                    self.logger.warning(f"OMS API call failed (non-blocking): {e}")
+
             return stored
 
         except Exception as e:

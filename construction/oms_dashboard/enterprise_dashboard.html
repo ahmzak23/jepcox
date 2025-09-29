@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OMS Enterprise Dashboard - Outage Management System</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        /* Top Navigation Bar */
+        .top-nav {
+            background: #1f2937;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-bar {
+            flex: 1;
+            max-width: 600px;
+            position: relative;
+        }
+
+        .search-bar input {
+            width: 100%;
+            padding: 8px 16px 8px 40px;
+            background: #374151;
+            border: 1px solid #4b5563;
+            border-radius: 6px;
+            color: #f9fafb;
+            font-size: 14px;
+        }
+
+        .search-bar input::placeholder {
+            color: #9ca3af;
+        }
+
+        .search-bar i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+        }
+
+        .top-nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-left: 24px;
+        }
+
+        .nav-icon {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #374151;
+            border-radius: 6px;
+            color: #d1d5db;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .nav-icon:hover {
+            background: #4b5563;
+            color: #f9fafb;
+        }
+
+        /* Main Layout */
+        .main-layout {
+            display: flex;
+            margin-top: 60px;
+            min-height: calc(100vh - 60px);
+        }
+
+        /* Left Sidebar */
+        .sidebar {
+            width: 280px;
+            background: #1f2937;
+            color: #f9fafb;
+            position: fixed;
+            left: 0;
+            top: 60px;
+            bottom: 0;
+            overflow-y: auto;
+            z-index: 999;
+        }
+
+        .sidebar-section {
+            padding: 24px 0;
+            border-bottom: 1px solid #374151;
+        }
+
+        .sidebar-section:last-child {
+            border-bottom: none;
+        }
+
+        .sidebar-title {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #9ca3af;
+            padding: 0 24px 12px;
+        }
+
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 24px;
+            color: #d1d5db;
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .sidebar-item:hover {
+            background: #374151;
+            color: #f9fafb;
+        }
+
+        .sidebar-item.active {
+            background: #3b82f6;
+            color: #f9fafb;
+        }
+
+        .sidebar-item i {
+            width: 20px;
+            margin-right: 12px;
+            text-align: center;
+        }
+
+        .new-button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 0 24px 24px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .new-button:hover {
+            background: #2563eb;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            background: #ffffff;
+            min-height: calc(100vh - 60px);
+        }
+
+        .content-header {
+            background: #ffffff;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 24px;
+        }
+
+        .content-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 8px;
+        }
+
+        .content-subtitle {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .content-body {
+            padding: 24px;
+        }
+
+        /* Tab Navigation */
+        .tab-nav {
+            display: flex;
+            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 24px;
+        }
+
+        .tab-item {
+            padding: 12px 24px;
+            color: #6b7280;
+            text-decoration: none;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .tab-item:hover {
+            color: #374151;
+        }
+
+        .tab-item.active {
+            color: #3b82f6;
+            border-bottom-color: #3b82f6;
+        }
+
+        /* Map Container */
+        .map-container {
+            height: 600px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .stat-card-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #6b7280;
+        }
+
+        .stat-card-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .stat-card-change {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .stat-card-change.positive {
+            color: #059669;
+        }
+
+        .stat-card-change.negative {
+            color: #dc2626;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Navigation -->
+    <div class="top-nav">
+        <div class="search-bar">
+            <i class="fas fa-search"></i>
+            <input type="text" placeholder="Q Search outages, crews, assets, and more..." />
+        </div>
+        <div class="top-nav-actions">
+            <div class="nav-icon" title="Keyboard Shortcuts">
+                <i class="fas fa-keyboard"></i>
+            </div>
+            <div class="nav-icon" title="Calendar">
+                <i class="fas fa-calendar"></i>
+            </div>
+            <div class="nav-icon" title="Notifications">
+                <i class="fas fa-gift"></i>
+            </div>
+            <div class="nav-icon" title="Help">
+                <i class="fas fa-question"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Layout -->
+    <div class="main-layout">
+        <!-- Left Sidebar -->
+        <div class="sidebar">
+            <button class="new-button" onclick="createNewOutage()">
+                <i class="fas fa-plus"></i>
+                New
+            </button>
+
+            <div class="sidebar-section">
+                <div class="sidebar-title">Workspace</div>
+                <div class="sidebar-item" onclick="switchTab('overview')">
+                    <i class="fas fa-building"></i>
+                    Workspace
+                </div>
+                <div class="sidebar-item" onclick="switchTab('recent')">
+                    <i class="fas fa-clock"></i>
+                    Recents
+                </div>
+                <div class="sidebar-item" onclick="switchTab('catalog')">
+                    <i class="fas fa-tags"></i>
+                    Catalog
+                </div>
+                <div class="sidebar-item" onclick="switchTab('workflows')">
+                    <i class="fas fa-project-diagram"></i>
+                    Workflows
+                </div>
+                <div class="sidebar-item" onclick="switchTab('compute')">
+                    <i class="fas fa-cloud"></i>
+                    Compute
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-title">OMS Operations</div>
+                <div class="sidebar-item" onclick="switchTab('overview')">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Overview
+                </div>
+                <div class="sidebar-item" onclick="switchTab('outages')">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Outages
+                </div>
+                <div class="sidebar-item" onclick="switchTab('analytics')">
+                    <i class="fas fa-chart-line"></i>
+                    Analytics
+                </div>
+                <div class="sidebar-item" onclick="switchTab('crews')">
+                    <i class="fas fa-users"></i>
+                    Crews
+                </div>
+                <div class="sidebar-item" onclick="switchTab('notifications')">
+                    <i class="fas fa-bell"></i>
+                    Notifications
+                </div>
+                <div class="sidebar-item" onclick="switchTab('alerts')">
+                    <i class="fas fa-exclamation-circle"></i>
+                    Alerts
+                </div>
+                <div class="sidebar-item" onclick="switchTab('map')">
+                    <i class="fas fa-map"></i>
+                    Geographic View
+                </div>
+                <div class="sidebar-item" onclick="switchTab('correlation-map')">
+                    <i class="fas fa-project-diagram"></i>
+                    Correlation Analysis
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-title">Data Engineering</div>
+                <div class="sidebar-item" onclick="switchTab('job-runs')">
+                    <i class="fas fa-list"></i>
+                    Job Runs
+                </div>
+                <div class="sidebar-item" onclick="switchTab('data-ingestion')">
+                    <i class="fas fa-database"></i>
+                    Data Ingestion
+                </div>
+                <div class="sidebar-item" onclick="switchTab('delta-tables')">
+                    <i class="fas fa-table"></i>
+                    Delta Live Tables
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="content-header">
+                <h1 class="content-title">OMS Enterprise Dashboard</h1>
+                <p class="content-subtitle">Outage Management System - Real-time Operations Center</p>
+            </div>
+
+            <div class="content-body">
+                <!-- Tab Navigation -->
+                <div class="tab-nav">
+                    <div class="tab-item active" onclick="switchTab('overview')">Overview</div>
+                    <div class="tab-item" onclick="switchTab('outages')">Outages</div>
+                    <div class="tab-item" onclick="switchTab('analytics')">Analytics</div>
+                    <div class="tab-item" onclick="switchTab('crews')">Crews</div>
+                    <div class="tab-item" onclick="switchTab('notifications')">Notifications</div>
+                    <div class="tab-item" onclick="switchTab('alerts')">Alerts</div>
+                    <div class="tab-item" onclick="switchTab('map')">Geographic View</div>
+                    <div class="tab-item" onclick="switchTab('correlation-map')">Correlation Analysis</div>
+                </div>
+
+                <!-- Content Areas -->
+                <div id="overview-content" class="tab-content">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-title">Active Outages</div>
+                                <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i>
+                            </div>
+                            <div class="stat-card-value" id="active-outages">0</div>
+                            <div class="stat-card-change positive">-2 from yesterday</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-title">Customers Affected</div>
+                                <i class="fas fa-users" style="color: #ef4444;"></i>
+                            </div>
+                            <div class="stat-card-value" id="affected-customers">0</div>
+                            <div class="stat-card-change negative">+15 from yesterday</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-title">Available Crews</div>
+                                <i class="fas fa-hard-hat" style="color: #10b981;"></i>
+                            </div>
+                            <div class="stat-card-value" id="available-crews">4</div>
+                            <div class="stat-card-change positive">All crews available</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-title">System Status</div>
+                                <i class="fas fa-check-circle" style="color: #10b981;"></i>
+                            </div>
+                            <div class="stat-card-value" style="font-size: 18px;">Online</div>
+                            <div class="stat-card-change positive">All systems operational</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="map-content" class="tab-content" style="display: none;">
+                    <div class="map-container" id="main-map"></div>
+                </div>
+
+                <div id="correlation-map-content" class="tab-content" style="display: none;">
+                    <div class="map-container" id="correlation-map"></div>
+                </div>
+
+                <!-- Other tab contents will be added here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let mainMap, correlationMap;
+        const API_BASE = 'http://localhost:9100';
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDashboard();
+        });
+
+        function initializeDashboard() {
+            // Initialize maps when needed
+            // Load initial data
+            loadOverviewData();
+        }
+
+        function switchTab(tabName) {
+            // Hide all tab contents
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => content.style.display = 'none');
+
+            // Remove active class from all tab items
+            const tabItems = document.querySelectorAll('.tab-item');
+            tabItems.forEach(item => item.classList.remove('active'));
+
+            // Show selected content
+            const selectedContent = document.getElementById(tabName + '-content');
+            if (selectedContent) {
+                selectedContent.style.display = 'block';
+            }
+
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+
+            // Initialize specific tab content
+            if (tabName === 'map') {
+                initializeMainMap();
+            } else if (tabName === 'correlation-map') {
+                initializeCorrelationMap();
+            }
+        }
+
+        function initializeMainMap() {
+            if (mainMap) return;
+
+            mainMap = L.map('main-map').setView([31.948104, 35.915990], 12);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(mainMap);
+
+            // Load map data
+            loadMapData();
+        }
+
+        function initializeCorrelationMap() {
+            if (correlationMap) return;
+
+            correlationMap = L.map('correlation-map').setView([31.948104, 35.915990], 12);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(correlationMap);
+
+            // Load correlation data
+            loadCorrelationData();
+        }
+
+        async function loadOverviewData() {
+            try {
+                const response = await fetch(`${API_BASE}/api/oms/overview`);
+                if (response.ok) {
+                    const data = await response.json();
+                    updateOverviewStats(data);
+                }
+            } catch (error) {
+                console.error('Error loading overview data:', error);
+            }
+        }
+
+        async function loadMapData() {
+            try {
+                const response = await fetch(`${API_BASE}/api/oms/map/data`);
+                if (response.ok) {
+                    const data = await response.json();
+                    displayMapData(data);
+                }
+            } catch (error) {
+                console.error('Error loading map data:', error);
+            }
+        }
+
+        async function loadCorrelationData() {
+            try {
+                const response = await fetch(`${API_BASE}/api/oms/correlation/data`);
+                if (response.ok) {
+                    const data = await response.json();
+                    displayCorrelationData(data);
+                }
+            } catch (error) {
+                console.error('Error loading correlation data:', error);
+            }
+        }
+
+        function updateOverviewStats(data) {
+            // Update stat cards with real data
+            if (data.active_outages !== undefined) {
+                document.getElementById('active-outages').textContent = data.active_outages;
+            }
+            if (data.affected_customers !== undefined) {
+                document.getElementById('affected-customers').textContent = data.affected_customers;
+            }
+            if (data.available_crews !== undefined) {
+                document.getElementById('available-crews').textContent = data.available_crews;
+            }
+        }
+
+        function displayMapData(data) {
+            // Display outages, crews, and other map elements
+            console.log('Map data:', data);
+        }
+
+        function displayCorrelationData(data) {
+            // Display correlation analysis
+            console.log('Correlation data:', data);
+        }
+
+        function createNewOutage() {
+            alert('Create New Outage functionality would be implemented here');
+        }
+    </script>
+</body>
+</html>

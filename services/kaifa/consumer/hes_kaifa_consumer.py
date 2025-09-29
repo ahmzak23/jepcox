@@ -26,6 +26,7 @@ import sys
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import psycopg2.pool
+import requests
 
 
 class HESKaifaConsumer:
@@ -155,6 +156,40 @@ class HESKaifaConsumer:
             conn.commit()
             
             self.logger.info(f"Successfully stored event {event_id} to database")
+
+            # Optionally call OMS ingestion API for real-time correlation
+            # Enable by setting OMS_API_URL (e.g., http://localhost:9100)
+            oms_api_url = os.getenv('OMS_API_URL')
+            if oms_api_url:
+                try:
+                    # Extract event details for correlation
+                    payload_data = data.get('payload', {})
+                    assets = payload_data.get('assets', {})
+                    
+                    # Try to extract meter ID from assets
+                    meter_id = None
+                    if isinstance(assets, dict):
+                        meter_id = assets.get('ns2:mRID') or assets.get('mRID')
+                    
+                    payload = {
+                        "event_type": "outage",
+                        "source_type": "kaifa",
+                        "source_event_id": payload_data.get('event_id', f"kaifa_{event_id}"),
+                        "timestamp": payload_data.get('created_date_time', datetime.now().isoformat()),
+                        "latitude": None,  # Kaifa events typically don't have lat/lng
+                        "longitude": None,
+                        "correlation_window_minutes": int(os.getenv('OMS_CORR_WINDOW_MIN', '30')),
+                        "spatial_radius_meters": int(os.getenv('OMS_SPATIAL_RADIUS_M', '1000')),
+                        "metadata": {
+                            "meter_id": meter_id,
+                            "severity": payload_data.get('severity'),
+                            "reason": payload_data.get('reason')
+                        }
+                    }
+                    requests.post(f"{oms_api_url}/api/oms/events/correlate", json=payload, timeout=5)
+                except Exception as e:
+                    self.logger.warning(f"OMS API call failed (non-blocking): {e}")
+
             return True
             
         except Exception as e:

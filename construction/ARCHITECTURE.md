@@ -45,3 +45,21 @@ Migration plan (safe, incremental):
 Note: Until approved, this is documentation-only. No runtime paths are changed yet.
 
 
+## Under Construction: OMS Components
+
+The following construction components are provided to run both real-time ingestion and batch backfill without changing existing services:
+
+- `oms_correlated_schema.sql`: Core schema (PostGIS-optional)
+- `oms_data_migration.sql`: Backfill and validation
+- `OMS_CORRELATED_SCHEMA_DOCUMENTATION.md`: Design notes
+- `OMS_API_INTEGRATION_GUIDE.md`: API usage examples
+- `oms_ingestion_service/` (FastAPI): minimal API to call `oms_correlate_events(...)` in real-time
+- `oms_migrator/` (Python + psql): container that executes `oms_data_migration.sql` once or on schedule
+- `docker-compose.yml` additions: `oms-postgres`, `oms-api`, `oms-migrator`
+
+### Modes
+- Real-time: Producers/consumers call `oms-api` endpoint per event; `oms-api` writes into `oms-postgres` using `oms_correlate_events(...)`.
+- Batch: `oms-migrator` runs `oms_data_migration.sql` to seed/backfill.
+
+> Note: These are under construction and safe to iterate on without impacting running services.
+

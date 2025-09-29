@@ -1,0 +1,3254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OMS Enterprise Dashboard - Outage Management System</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        /* Top Navigation Bar */
+        .top-nav {
+            background: #1f2937;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-bar {
+            flex: 1;
+            max-width: 600px;
+            position: relative;
+        }
+
+        .search-bar input {
+            width: 100%;
+            padding: 8px 16px 8px 40px;
+            background: #374151;
+            border: 1px solid #4b5563;
+            border-radius: 6px;
+            color: #f9fafb;
+            font-size: 14px;
+        }
+
+        .search-bar input::placeholder {
+            color: #9ca3af;
+        }
+
+        .search-bar i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+        }
+
+        .top-nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-left: 24px;
+        }
+
+        .nav-icon {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #374151;
+            border-radius: 6px;
+            color: #d1d5db;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .nav-icon:hover {
+            background: #4b5563;
+            color: #f9fafb;
+        }
+
+        /* Main Layout */
+        .main-layout {
+            display: flex;
+            margin-top: 60px;
+            min-height: calc(100vh - 60px);
+        }
+
+        /* Left Sidebar */
+        .sidebar {
+            width: 280px;
+            background: #1f2937;
+            color: #f9fafb;
+            position: fixed;
+            left: 0;
+            top: 60px;
+            bottom: 0;
+            overflow-y: auto;
+            z-index: 999;
+        }
+
+        .sidebar-section {
+            padding: 24px 0;
+            border-bottom: 1px solid #374151;
+        }
+
+        .sidebar-section:last-child {
+            border-bottom: none;
+        }
+
+        .sidebar-title {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #9ca3af;
+            padding: 0 24px 12px;
+        }
+
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 24px;
+            color: #d1d5db;
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .sidebar-item:hover {
+            background: #374151;
+            color: #f9fafb;
+        }
+
+        .sidebar-item.active {
+            background: #3b82f6;
+            color: #f9fafb;
+        }
+
+        .sidebar-item i {
+            width: 20px;
+            margin-right: 12px;
+            text-align: center;
+        }
+
+        .new-button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 0 24px 24px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .new-button:hover {
+            background: #2563eb;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            background: #ffffff;
+            min-height: calc(100vh - 60px);
+        }
+
+        .content-header {
+            background: #ffffff;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 24px;
+        }
+
+        .header-main {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 24px;
+        }
+
+        .header-title {
+            flex: 1;
+        }
+
+        .content-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 8px;
+        }
+
+        .content-subtitle {
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .system-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .status-dot.online {
+            background: #10b981;
+        }
+
+        .status-dot.offline {
+            background: #ef4444;
+        }
+
+        .header-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            align-items: flex-end;
+        }
+
+        .global-filters {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .filter-select {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: #ffffff;
+            font-size: 14px;
+            color: #374151;
+            min-width: 140px;
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .content-body {
+            padding: 24px;
+        }
+
+        /* Tab Navigation */
+        .tab-nav {
+            display: flex;
+            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 24px;
+        }
+
+        .tab-item {
+            padding: 12px 24px;
+            color: #6b7280;
+            text-decoration: none;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .tab-item:hover {
+            color: #374151;
+        }
+
+        .tab-item.active {
+            color: #3b82f6;
+            border-bottom-color: #3b82f6;
+        }
+
+        /* Map Container */
+        .map-container {
+            height: 600px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+        
+        .fullscreen-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #374151;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .fullscreen-btn:hover {
+            background: rgba(255, 255, 255, 1);
+            border-color: #9ca3af;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .fullscreen-btn i {
+            font-size: 16px;
+        }
+        
+        .fullscreen-btn.fullscreen {
+            background: rgba(59, 130, 246, 0.9);
+            color: white;
+            border-color: #3b82f6;
+        }
+        
+        .fullscreen-btn.fullscreen:hover {
+            background: rgba(59, 130, 246, 1);
+        }
+        
+        /* Fullscreen styles */
+        .map-container.fullscreen {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            z-index: 9999 !important;
+            border-radius: 0 !important;
+            background: white;
+        }
+        
+        .map-container.fullscreen .leaflet-container {
+            height: 100vh !important;
+        }
+        
+        /* Map Controls Panel */
+        .map-controls-panel {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: flex !important;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            min-height: 120px;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        
+        .map-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+            min-width: 400px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 0.5rem;
+            border-radius: 4px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: white;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+        
+        .legend-dot.critical {
+            background-color: #dc2626;
+        }
+        
+        .legend-dot.high {
+            background-color: #f59e0b;
+        }
+        
+        .legend-dot.medium {
+            background-color: #3b82f6;
+        }
+        
+        .legend-dot.low {
+            background-color: #10b981;
+        }
+        
+        .legend-dot.crew {
+            background-color: #8b5cf6;
+        }
+        
+        .legend-dot.substation {
+            background-color: #06b6d4;
+        }
+
+        .legend-connections {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .legend-connections h5 {
+            color: white;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .legend-line {
+            width: 20px;
+            height: 3px;
+            border-radius: 2px;
+        }
+
+        .legend-line.blue-dashed {
+            background: repeating-linear-gradient(
+                90deg,
+                #3b82f6 0px,
+                #3b82f6 8px,
+                transparent 8px,
+                transparent 16px
+            );
+        }
+
+        .legend-line.green-dashed {
+            background: repeating-linear-gradient(
+                90deg,
+                #10b981 0px,
+                #10b981 12px,
+                transparent 12px,
+                transparent 24px
+            );
+        }
+        
+        .map-controls {
+            display: flex;
+            gap: 2rem;
+            align-items: flex-start;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 0.5rem;
+            border-radius: 4px;
+            min-width: 300px;
+        }
+        
+        .control-section {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1rem;
+            border-radius: 6px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .control-section h4 {
+            color: white;
+            margin: 0 0 0.75rem 0;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        .control-checkboxes {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .control-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: white;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+        
+        .control-checkbox input[type="checkbox"] {
+            margin: 0;
+            cursor: pointer;
+        }
+        
+        .control-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .control-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 0.5rem 0.75rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+            backdrop-filter: blur(10px);
+        }
+        
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-1px);
+        }
+        
+        .control-btn i {
+            font-size: 0.875rem;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .stat-card-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #6b7280;
+        }
+
+        .stat-card-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .stat-card-change {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .stat-card-change.positive {
+            color: #059669;
+        }
+
+        .stat-card-change.negative {
+            color: #dc2626;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+
+        /* Map Marker Styles */
+        .crew-marker {
+            background: #3b82f6;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .crew-icon {
+            color: white;
+            font-size: 14px;
+        }
+
+        .jepco-hq-marker {
+            background: #dc2626;
+            border: 3px solid #ffffff;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .hq-icon {
+            color: white;
+            font-size: 18px;
+        }
+
+        /* Popup Styles */
+        .outage-popup, .crew-popup, .hq-popup, .correlation-popup {
+            min-width: 200px;
+        }
+
+        .outage-popup h4, .crew-popup h4, .hq-popup h4, .correlation-popup h4 {
+            margin: 0 0 8px 0;
+            color: #111827;
+            font-size: 16px;
+        }
+
+        .outage-popup p, .crew-popup p, .hq-popup p, .correlation-popup p {
+            margin: 4px 0;
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        /* Section Headers */
+        .section-header {
+            margin: 32px 0 16px 0;
+        }
+
+        .section-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #111827;
+            margin: 0;
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .section-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #2563eb;
+        }
+        
+        .btn-secondary {
+            background-color: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #e5e7eb;
+        }
+        
+        .outages-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .outage-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .outage-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        
+        .outage-id {
+            font-family: monospace;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .outage-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status-detected {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+        
+        .status-investigating {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .status-resolved {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+        
+        .outage-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .detail-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .detail-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #6b7280;
+            min-width: 80px;
+        }
+        
+        .confidence-bar {
+            width: 100px;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #dc2626 0%, #f59e0b 50%, #10b981 100%);
+            transition: width 0.3s ease;
+            position: absolute;
+            top: 0;
+            left: 0;
+            border-radius: 4px;
+        }
+        
+        .confidence-value {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .severity-badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .severity-high {
+            background-color: #fee2e2;
+            color: #dc2626;
+        }
+        
+        .severity-medium {
+            background-color: #fef3c7;
+            color: #d97706;
+        }
+        
+        .severity-low {
+            background-color: #d1fae5;
+            color: #059669;
+        }
+        
+        .customer-count {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .sources-count {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        
+        .detection-time {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        
+        .source-tags {
+            display: flex;
+            gap: 0.25rem;
+            flex-wrap: wrap;
+        }
+        
+        .source-tag {
+            padding: 0.125rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+        
+        .source-scada {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .source-kaifa {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+        
+        .source-onu {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+        
+        .source-call_center {
+            background-color: #fce7f3;
+            color: #be185d;
+        }
+        
+        .no-data {
+            text-align: center;
+            color: #6b7280;
+            font-style: italic;
+            padding: 2rem;
+        }
+        
+        .chart-container-large {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            height: 400px;
+            margin-top: 1rem;
+        }
+        
+        .crews-list, .alerts-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .crew-card, .alert-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .crew-icon, .alert-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: white;
+        }
+        
+        .crew-icon {
+            background-color: #10b981;
+        }
+        
+        .alert-icon.critical {
+            background-color: #dc2626;
+        }
+        
+        .alert-icon.warning {
+            background-color: #f59e0b;
+        }
+        
+        .alert-icon.info {
+            background-color: #3b82f6;
+        }
+        
+        .crew-info, .alert-info {
+            flex: 1;
+        }
+        
+        .crew-name, .alert-title {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.25rem;
+        }
+        
+        .crew-details, .alert-description {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-bottom: 0.25rem;
+        }
+        
+        .crew-status, .alert-timestamp {
+            font-size: 0.75rem;
+            color: #9ca3af;
+        }
+        
+        .crew-status.available {
+            color: #10b981;
+            font-weight: 600;
+        }
+        
+        .crew-status.assigned {
+            color: #f59e0b;
+            font-weight: 600;
+        }
+        
+        .btn-warning {
+            background-color: #f59e0b;
+            color: white;
+        }
+        
+        .btn-warning:hover {
+            background-color: #d97706;
+        }
+
+        /* Performance Metrics */
+        .performance-metrics {
+            display: flex
+;
+    flex-direction: row;
+    gap: 16px;
+    margin-bottom: 32px;
+    justify-content: space-between;
+        }
+
+        .metric-item {
+                display: flex
+;
+    align-items: center;
+    gap: 16px;
+    flex-direction: column-reverse;
+    text-align: center;
+        }
+
+        .metric-bar {
+            width: 200px;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .metric-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .metric-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .metric-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .metric-label {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        /* Analytics Grid */
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .chart-container {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            height: 300px;
+        }
+
+        /* Event Sources */
+        .event-sources {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .source-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .source-item:hover {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .source-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+        }
+
+        .source-item.scada .source-icon {
+            background: #3b82f6;
+        }
+
+        .source-item.kaifa .source-icon {
+            background: #ef4444;
+        }
+
+        .source-item.onu .source-icon {
+            background: #f59e0b;
+        }
+
+        .source-item.call-center .source-icon {
+            background: #10b981;
+        }
+
+        .source-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .source-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .source-count {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .header-main {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .header-controls {
+                align-items: stretch;
+            }
+
+            .global-filters {
+                flex-wrap: wrap;
+            }
+
+            .analytics-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .event-sources {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Animated connection lines */
+        .animated-line {
+            animation: dashMove 2s linear infinite;
+        }
+
+        .crew-assignment-line {
+            animation: crewFlow 3s linear infinite;
+        }
+
+        @keyframes dashMove {
+            0% {
+                stroke-dashoffset: 0;
+            }
+            100% {
+                stroke-dashoffset: -20;
+            }
+        }
+
+        @keyframes crewFlow {
+            0% { stroke-dashoffset: 0; }
+            100% { stroke-dashoffset: -20; }
+        }
+
+        /* Crew Assignment Metadata Styles */
+        .assignment-metadata {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 16px;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            min-width: 240px;
+            max-width: 280px;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            line-height: 1.4;
+            backdrop-filter: blur(10px);
+            position: relative;
+            z-index: 1000;
+        }
+
+        .assignment-metadata::before {
+            content: '';
+            position: absolute;
+            top: -3px;
+            left: -3px;
+            right: -3px;
+            bottom: -3px;
+            background: linear-gradient(135deg, #10b981, #059669, #10b981);
+            border-radius: 16px;
+            z-index: -1;
+            opacity: 0.3;
+        }
+
+        .assignment-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            font-weight: 700;
+            font-size: 16px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .assignment-header i {
+            color: #fbbf24;
+            font-size: 18px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .crew-name {
+            font-weight: 800;
+            font-size: 16px;
+        }
+
+        .assignment-details {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .assignment-status,
+        .assignment-priority,
+        .assignment-progress {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 4px 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            border-left: 3px solid;
+        }
+
+        .assignment-status {
+            border-left-color: #60a5fa;
+        }
+
+        .assignment-priority {
+            border-left-color: #fbbf24;
+        }
+
+        .assignment-progress {
+            border-left-color: #34d399;
+        }
+
+        .assignment-status i,
+        .assignment-priority i,
+        .assignment-progress i {
+            font-size: 14px;
+            min-width: 16px;
+        }
+
+        .assignment-status i {
+            color: #60a5fa;
+        }
+
+        .assignment-priority i {
+            color: #fbbf24;
+        }
+
+        .assignment-progress i {
+            color: #34d399;
+        }
+
+        /* Performance Metrics Card Styles */
+        .performance-metrics-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin: 24px 0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.1);
+        }
+
+        .performance-metrics-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .performance-metrics-header h3 {
+            color: #1e40af;
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .performance-metrics-divider {
+            height: 1px;
+            background: #e5e7eb;
+            margin-bottom: 20px;
+        }
+
+        .performance-metrics-grid {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .performance-metric {
+            flex: 1;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .performance-metric .metric-value {
+            color: #1e40af;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .performance-metric .metric-label {
+            color: #1e40af;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .performance-metric .metric-dash {
+            color: #1e40af;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .metric-separator {
+            width: 1px;
+            height: 60px;
+            background: #3b82f6;
+            margin: 0 16px;
+            border-radius: 0.5px;
+        }
+
+        .metric-separator::after {
+            content: '';
+            display: block;
+            width: 3px;
+            height: 3px;
+            background: #3b82f6;
+            border-radius: 50%;
+            margin: -1.5px auto;
+            transform: translateY(57px);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .performance-metrics-grid {
+                flex-direction: column;
+                gap: 16px;
+            }
+            
+            .metric-separator {
+                width: 60px;
+                height: 1px;
+                margin: 8px 0;
+            }
+            
+            .metric-separator::after {
+                transform: translateX(57px) translateY(-1.5px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Navigation -->
+    <div class="top-nav">
+        <div class="search-bar">
+            <i class="fas fa-search"></i>
+            <input type="text" placeholder="Q Search outages, crews, assets, and more..." />
+        </div>
+       <!-- <div class="top-nav-actions">
+            <div class="nav-icon" title="Keyboard Shortcuts">
+                <i class="fas fa-keyboard"></i>
+            </div>
+            <div class="nav-icon" title="Calendar">
+                <i class="fas fa-calendar"></i>
+            </div>
+            <div class="nav-icon" title="Notifications">
+                <i class="fas fa-gift"></i>
+            </div>
+            <div class="nav-icon" title="Help">
+                <i class="fas fa-question"></i>
+            </div>
+        </div>-->
+    </div>
+
+    <!-- Main Layout -->
+    <div class="main-layout">
+        <!-- Left Sidebar -->
+        <div class="sidebar">
+            <button class="new-button" onclick="createNewOutage()">
+                <i class="fas fa-plus"></i>
+                New Outage
+            </button>
+
+            <div class="sidebar-section">
+                <div class="sidebar-title">OMS Operations</div>
+                <div class="sidebar-item active" onclick="switchTab('overview')">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Overview
+                </div>
+                <div class="sidebar-item" onclick="switchTab('outages')">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Outages
+                </div>
+                <div class="sidebar-item" onclick="switchTab('analytics')">
+                    <i class="fas fa-chart-line"></i>
+                    Analytics
+                </div>
+                <div class="sidebar-item" onclick="switchTab('crews')">
+                    <i class="fas fa-users"></i>
+                    Crews
+                </div>
+                <div class="sidebar-item" onclick="switchTab('notifications')">
+                    <i class="fas fa-bell"></i>
+                    Notifications
+                </div>
+                <div class="sidebar-item" onclick="switchTab('alerts')">
+                    <i class="fas fa-exclamation-circle"></i>
+                    Alerts
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-title">Maps & Analysis</div>
+                <div class="sidebar-item" onclick="switchTab('map')">
+                    <i class="fas fa-map"></i>
+                    Geographic View
+                </div>
+                <div class="sidebar-item" onclick="switchTab('correlation-map')">
+                    <i class="fas fa-project-diagram"></i>
+                    Correlation Analysis
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-title">System</div>
+                <div class="sidebar-item" onclick="switchTab('settings')">
+                    <i class="fas fa-cog"></i>
+                    Settings
+                </div>
+                <div class="sidebar-item" onclick="switchTab('reports')">
+                    <i class="fas fa-file-alt"></i>
+                    Reports
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="content-header">
+                <div class="header-main">
+                    <div class="header-title">
+                        <h1 class="content-title">OMS Enterprise Dashboard</h1>
+                        <p class="content-subtitle">Outage Management System - Real-time Operations Center</p>
+                        <div class="system-status">
+                            <span class="status-dot online"></span>
+                            <span>System Online</span>
+                        </div>
+                    </div>
+                    <div class="header-controls">
+                        <div class="global-filters">
+                            <select id="timeFilter" class="filter-select">
+                                <option value="24h">Last 24 Hours</option>
+                                <option value="7d">Last 7 Days</option>
+                                <option value="30d">Last 30 Days</option>
+                            </select>
+                            <select id="severityFilter" class="filter-select">
+                                <option value="all">All Severities</option>
+                                <option value="critical">Critical</option>
+                                <option value="high">High</option>
+                                <option value="medium">Medium</option>
+                                <option value="low">Low</option>
+                            </select>
+                            <select id="sourceFilter" class="filter-select">
+                                <option value="all">All Sources</option>
+                                <option value="scada">SCADA</option>
+                                <option value="kaifa">KAIFA</option>
+                                <option value="onu">ONU</option>
+                                <option value="call_center">Call Center</option>
+                            </select>
+                        </div>
+                        <div class="action-buttons">
+                            <button class="btn btn-secondary" onclick="refreshData()">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                            <button class="btn btn-secondary" onclick="exportData()">
+                                <i class="fas fa-download"></i> Export
+                            </button>
+                            <button class="btn btn-primary" onclick="openAnalytics()">
+                                <i class="fas fa-chart-line"></i> Analytics
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-body">
+                <!-- Tab Navigation -->
+                <div class="tab-nav">
+                    <div class="tab-item active" onclick="switchTab('overview')">Overview</div>
+                    <div class="tab-item" onclick="switchTab('outages')">Outages</div>
+                    <div class="tab-item" onclick="switchTab('analytics')">Analytics</div>
+                    <div class="tab-item" onclick="switchTab('crews')">Crews</div>
+                    <div class="tab-item" onclick="switchTab('notifications')">Notifications</div>
+                    <div class="tab-item" onclick="switchTab('alerts')">Alerts</div>
+                    <div class="tab-item" onclick="switchTab('map')">Geographic View</div>
+                    <div class="tab-item" onclick="switchTab('correlation-map')">Correlation Analysis</div>
+                </div>
+
+                <!-- Content Areas -->
+                <div id="overview-content" class="tab-content">
+                    <!-- Key Metrics Cards -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-title">Active Outages</div>
+                                <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i>
+                            </div>
+                            <div class="stat-card-value" id="active-outages">16</div>
+                            <div class="stat-card-change">Currently detected</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-title">Affected Customers</div>
+                                <i class="fas fa-users" style="color: #ef4444;"></i>
+                            </div>
+                            <div class="stat-card-value" id="affected-customers">0</div>
+                            <div class="stat-card-change">Total impacted</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-title">High Confidence</div>
+                                <i class="fas fa-chart-line" style="color: #3b82f6;"></i>
+                            </div>
+                            <div class="stat-card-value" id="high-confidence">0</div>
+                            <div class="stat-card-change">Score > 0.8</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-title">Last Update</div>
+                                <i class="fas fa-clock" style="color: #6b7280;"></i>
+                            </div>
+                            <div class="stat-card-value" id="last-update" style="font-size: 18px;">Minutes ago</div>
+                            <div class="stat-card-change">Real-time monitoring</div>
+                        </div>
+                    </div>
+
+                    <!-- Performance Metrics Section -->
+                    <div class="performance-metrics-card">
+                        <div class="performance-metrics-header">
+                            <i class="fas fa-tachometer-alt" style="color: #374151; margin-right: 8px;"></i>
+                            <h3>Performance Metrics</h3>
+                        </div>
+                        <div class="performance-metrics-divider"></div>
+                        <div class="performance-metrics-grid">
+                            <div class="performance-metric">
+                                <div class="metric-value">1.6h</div>
+                                <div class="metric-label">Avg Response Time</div>
+                                <div class="metric-dash">-</div>
+                            </div>
+                            <div class="metric-separator"></div>
+                            <div class="performance-metric">
+                                <div class="metric-value">87.5%</div>
+                                <div class="metric-label">Completion Rate</div>
+                                <div class="metric-dash">-</div>
+                            </div>
+                            <div class="metric-separator"></div>
+                            <div class="performance-metric">
+                                <div class="metric-value">75.0%</div>
+                                <div class="metric-label">Source Accuracy</div>
+                                <div class="metric-dash">-</div>
+                            </div>
+                            <div class="metric-separator"></div>
+                            <div class="performance-metric">
+                                <div class="metric-value">99.9%</div>
+                                <div class="metric-label">System Uptime</div>
+                                <div class="metric-dash">-</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Analytics Section -->
+                    <div class="section-header">
+                        <h3>Quick Analytics</h3>
+                    </div>
+                    <div class="analytics-grid">
+                        <div class="chart-container">
+                            <canvas id="trendChart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="sourceChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Event Sources Section -->
+                    <div class="section-header">
+                        <h3>Event Sources</h3>
+                    </div>
+                    <div class="event-sources">
+                        <div class="source-item scada">
+                            <div class="source-icon">
+                                <i class="fas fa-bolt"></i>
+                            </div>
+                            <div class="source-info">
+                                <span class="source-name">SCADA</span>
+                                <span class="source-count">5 Events</span>
+                            </div>
+                        </div>
+                        <div class="source-item kaifa">
+                            <div class="source-icon">
+                                <i class="fas fa-tachometer-alt"></i>
+                            </div>
+                            <div class="source-info">
+                                <span class="source-name">KAIFA</span>
+                                <span class="source-count">8 Events</span>
+                            </div>
+                        </div>
+                        <div class="source-item onu">
+                            <div class="source-icon">
+                                <i class="fas fa-wifi"></i>
+                            </div>
+                            <div class="source-info">
+                                <span class="source-name">ONU</span>
+                                <span class="source-count">12 Events</span>
+                            </div>
+                        </div>
+                        <div class="source-item call-center">
+                            <div class="source-icon">
+                                <i class="fas fa-phone"></i>
+                            </div>
+                            <div class="source-info">
+                                <span class="source-name">Call Center</span>
+                                <span class="source-count">3 Events</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="map-content" class="tab-content" style="display: none;">
+                    <!-- Map Controls Panel -->
+                    <div class="map-controls-panel">
+                        <div class="map-legend">
+                            <div class="legend-item">
+                                <span class="legend-dot critical"></span>
+                                <span>Critical Outages</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-dot high"></span>
+                                <span>High Priority</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-dot medium"></span>
+                                <span>Medium Priority</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-dot low"></span>
+                                <span>Low Priority</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-dot crew"></span>
+                                <span>Crew On-Site</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-dot substation"></span>
+                                <span>Substations</span>
+                            </div>
+                            <div class="legend-connections">
+                                <h5>Connection Lines</h5>
+                                <div class="legend-item">
+                                    <div class="legend-line blue-dashed"></div>
+                                    <span>Outage → JEPCO HQ</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-line green-dashed"></div>
+                                    <span>Crew Assignment</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="map-controls">
+                            <div class="control-section">
+                                <h4>Show/Hide Elements</h4>
+                                <div class="control-checkboxes">
+                                    <label class="control-checkbox">
+                                        <input type="checkbox" id="show-outages" checked onchange="toggleMapLayer('outages')">
+                                        <span>Show Outages</span>
+                                    </label>
+                                    <label class="control-checkbox">
+                                        <input type="checkbox" id="show-events" checked onchange="toggleMapLayer('events')">
+                                        <span>Show Events</span>
+                                    </label>
+                                    <label class="control-checkbox">
+                                        <input type="checkbox" id="show-crews" checked onchange="toggleMapLayer('crews')">
+                                        <span>Show Crews</span>
+                                    </label>
+                                    <label class="control-checkbox">
+                                        <input type="checkbox" id="show-assets" checked onchange="toggleMapLayer('assets')">
+                                        <span>Show Assets</span>
+                                    </label>
+                                    <label class="control-checkbox">
+                                        <input type="checkbox" id="show-hotspots" checked onchange="toggleMapLayer('hotspots')">
+                                        <span>Show Hotspots</span>
+                                    </label>
+                                    <label class="control-checkbox">
+                                        <input type="checkbox" id="show-flow-lines" checked onchange="toggleMapLayer('flow-lines')">
+                                        <span>Show Flow Lines</span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="control-section">
+                                <h4>Actions</h4>
+                                <div class="control-buttons">
+                                    <button class="control-btn" onclick="refreshMapData()">
+                                        <i class="fas fa-sync-alt"></i> Refresh
+                                    </button>
+                                    <button class="control-btn" onclick="centerJEPCO()">
+                                        <i class="fas fa-crosshairs"></i> Center JEPCO
+                                    </button>
+                                    <button class="control-btn" onclick="fitMapToData()">
+                                        <i class="fas fa-expand-arrows-alt"></i> Fit Data
+                                    </button>
+                                    <button class="control-btn" onclick="toggleFullscreen('main-map')">
+                                        <i class="fas fa-expand"></i> Fullscreen
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="map-container" id="main-map">
+                        <button id="main-map-fullscreen-btn" class="fullscreen-btn" onclick="toggleFullscreen('main-map')">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="correlation-map-content" class="tab-content" style="display: none;">
+                    <div class="map-container" id="correlation-map">
+                        <button id="correlation-map-fullscreen-btn" class="fullscreen-btn" onclick="toggleFullscreen('correlation-map')">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="outages-content" class="tab-content" style="display: none;">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-title">Active Outages</div>
+                                <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i>
+                            </div>
+                            <div class="stat-card-value" id="outages-count">0</div>
+                            <div class="stat-card-change">Real-time monitoring</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-title">Critical Outages</div>
+                                <i class="fas fa-fire" style="color: #dc2626;"></i>
+                            </div>
+                            <div class="stat-card-value" id="critical-outages">0</div>
+                            <div class="stat-card-change">Immediate attention required</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Active Outages List -->
+                    <div class="section-header">
+                        <h3>Active Outages</h3>
+                        <div class="section-actions">
+                            <button class="btn btn-secondary" onclick="loadOutagesData()">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                            <button class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Create Outage
+                            </button>
+                        </div>
+                    </div>
+                    <div id="outages-list" class="outages-list">
+                        <!-- Outages will be populated here -->
+                    </div>
+                </div>
+
+                <div id="analytics-content" class="tab-content" style="display: none;">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-title">Performance Metrics</div>
+                                <i class="fas fa-chart-line" style="color: #3b82f6;"></i>
+                            </div>
+                            <div class="stat-card-value" id="performance-score">95%</div>
+                            <div class="stat-card-change positive">+2% from last week</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-title">Response Time</div>
+                                <i class="fas fa-clock" style="color: #10b981;"></i>
+                            </div>
+                            <div class="stat-card-value" id="response-time">12m</div>
+                            <div class="stat-card-change positive">-3m improvement</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Outage Trends Chart -->
+                    <div class="section-header">
+                        <h3>Outage Trends</h3>
+                        <div class="section-actions">
+                            <button class="btn btn-secondary" onclick="loadAnalyticsData()">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+                    <div class="chart-container-large">
+                        <canvas id="outageTrendsChart"></canvas>
+                    </div>
+                </div>
+
+                <div id="crews-content" class="tab-content" style="display: none;">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-title">Available Crews</div>
+                                <i class="fas fa-hard-hat" style="color: #10b981;"></i>
+                            </div>
+                            <div class="stat-card-value" id="available-crews-count">4</div>
+                            <div class="stat-card-change">All crews ready</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-title">Assigned Crews</div>
+                                <i class="fas fa-user-check" style="color: #3b82f6;"></i>
+                            </div>
+                            <div class="stat-card-value" id="assigned-crews-count">0</div>
+                            <div class="stat-card-change">No active assignments</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Active Crews List -->
+                    <div class="section-header">
+                        <h3>Active Crews</h3>
+                        <div class="section-actions">
+                            <button class="btn btn-secondary" onclick="loadCrewsData()">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                            <button class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Assign Crew
+                            </button>
+                        </div>
+                    </div>
+                    <div id="crews-list" class="crews-list">
+                        <!-- Crews will be populated here -->
+                    </div>
+                </div>
+
+                <div id="notifications-content" class="tab-content" style="display: none;">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-title">Unread Notifications</div>
+                                <i class="fas fa-bell" style="color: #f59e0b;"></i>
+                            </div>
+                            <div class="stat-card-value" id="unread-notifications">0</div>
+                            <div class="stat-card-change">All caught up</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-title">System Alerts</div>
+                                <i class="fas fa-exclamation-circle" style="color: #dc2626;"></i>
+                            </div>
+                            <div class="stat-card-value" id="system-alerts">0</div>
+                            <div class="stat-card-change">No active alerts</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="alerts-content" class="tab-content" style="display: none;">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-title">Active Alerts</div>
+                                <i class="fas fa-exclamation-triangle" style="color: #dc2626;"></i>
+                            </div>
+                            <div class="stat-card-value" id="active-alerts">0</div>
+                            <div class="stat-card-change">System stable</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-title">Alert Response</div>
+                                <i class="fas fa-bolt" style="color: #10b981;"></i>
+                            </div>
+                            <div class="stat-card-value" id="alert-response">100%</div>
+                            <div class="stat-card-change">Excellent performance</div>
+                        </div>
+                    </div>
+                    
+                    <!-- System Alerts List -->
+                    <div class="section-header">
+                        <h3>System Alerts</h3>
+                        <div class="section-actions">
+                            <button class="btn btn-secondary" onclick="loadAlertsData()">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                            <button class="btn btn-warning">
+                                <i class="fas fa-check"></i> Acknowledge All
+                            </button>
+                        </div>
+                    </div>
+                    <div id="alerts-list" class="alerts-list">
+                        <!-- Alerts will be populated here -->
+                    </div>
+                </div>
+
+                <div id="settings-content" class="tab-content" style="display: none;">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-title">System Configuration</div>
+                                <i class="fas fa-cog" style="color: #6b7280;"></i>
+                            </div>
+                            <div class="stat-card-value" style="font-size: 18px;">Configured</div>
+                            <div class="stat-card-change">All settings optimal</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="reports-content" class="tab-content" style="display: none;">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-title">Generated Reports</div>
+                                <i class="fas fa-file-alt" style="color: #3b82f6;"></i>
+                            </div>
+                            <div class="stat-card-value" id="reports-count">12</div>
+                            <div class="stat-card-change">This month</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let mainMap, correlationMap;
+        const API_BASE = 'http://localhost:9100';
+        
+        // Map layer visibility control
+        let mapLayers = {
+            outages: true,
+            events: true,
+            crews: true,
+            assets: true,
+            hotspots: true,
+            flowLines: true
+        };
+
+        // Fullscreen toggle function
+        function toggleFullscreen(mapId) {
+            const mapContainer = document.getElementById(mapId);
+            const fullscreenBtn = document.getElementById(mapId + '-fullscreen-btn');
+            const icon = fullscreenBtn.querySelector('i');
+            
+            if (!document.fullscreenElement) {
+                // Enter fullscreen
+                mapContainer.requestFullscreen().then(() => {
+                    mapContainer.classList.add('fullscreen');
+                    fullscreenBtn.classList.add('fullscreen');
+                    icon.className = 'fas fa-compress';
+                    
+                    // Invalidate map size after entering fullscreen
+                    setTimeout(() => {
+                        if (mapId === 'main-map' && mainMap) {
+                            mainMap.invalidateSize();
+                        } else if (mapId === 'correlation-map' && correlationMap) {
+                            correlationMap.invalidateSize();
+                        }
+                    }, 100);
+                }).catch(err => {
+                    console.error('Error attempting to enable fullscreen:', err);
+                });
+            } else {
+                // Exit fullscreen
+                document.exitFullscreen().then(() => {
+                    mapContainer.classList.remove('fullscreen');
+                    fullscreenBtn.classList.remove('fullscreen');
+                    icon.className = 'fas fa-expand';
+                    
+                    // Invalidate map size after exiting fullscreen
+                    setTimeout(() => {
+                        if (mapId === 'main-map' && mainMap) {
+                            mainMap.invalidateSize();
+                        } else if (mapId === 'correlation-map' && correlationMap) {
+                            correlationMap.invalidateSize();
+                        }
+                    }, 100);
+                }).catch(err => {
+                    console.error('Error attempting to exit fullscreen:', err);
+                });
+            }
+        }
+        
+        // Handle fullscreen change events
+        document.addEventListener('fullscreenchange', function() {
+            if (!document.fullscreenElement) {
+                // Exited fullscreen
+                const fullscreenContainers = document.querySelectorAll('.map-container.fullscreen');
+                fullscreenContainers.forEach(container => {
+                    container.classList.remove('fullscreen');
+                    const fullscreenBtn = container.querySelector('.fullscreen-btn');
+                    if (fullscreenBtn) {
+                        fullscreenBtn.classList.remove('fullscreen');
+                        const icon = fullscreenBtn.querySelector('i');
+                        if (icon) {
+                            icon.className = 'fas fa-expand';
+                        }
+                    }
+                });
+            }
+        });
+        
+        // Handle escape key to exit fullscreen
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape' && document.fullscreenElement) {
+                document.exitFullscreen();
+            }
+        });
+        
+        // Map control functions
+        function toggleMapLayer(layerType) {
+            mapLayers[layerType] = !mapLayers[layerType];
+            console.log(`Toggled ${layerType} layer:`, mapLayers[layerType]);
+            
+            // Refresh map data to apply layer visibility
+            if (mainMap) {
+                refreshMapData();
+            }
+        }
+        
+        function refreshMapData() {
+            console.log('Refreshing map data...');
+            loadMapData();
+        }
+        
+        function centerJEPCO() {
+            if (mainMap) {
+                console.log('Centering map on JEPCO HQ...');
+                mainMap.setView([31.948104, 35.915990], 12);
+            }
+        }
+        
+        function fitMapToData() {
+            if (mainMap) {
+                console.log('Fitting map to show all data...');
+                // Create a group to get bounds of all visible markers
+                const group = new L.featureGroup();
+                
+                // Add all visible markers to group
+                mainMap.eachLayer(layer => {
+                    if (layer instanceof L.Marker || layer instanceof L.CircleMarker) {
+                        group.addLayer(layer);
+                    }
+                });
+                
+                if (group.getLayers().length > 0) {
+                    mainMap.fitBounds(group.getBounds().pad(0.1));
+                } else {
+                    // If no markers, center on JEPCO
+                    centerJEPCO();
+                }
+            }
+        }
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDashboard();
+        });
+
+        function initializeDashboard() {
+            console.log('Initializing dashboard...');
+            
+            // Load initial data for all tabs
+            loadOverviewData();
+            loadOutagesData();
+            loadAnalyticsData();
+            loadCrewsData();
+            loadNotificationsData();
+            loadAlertsData();
+            
+            // Initialize charts
+            setTimeout(() => {
+                initializeCharts();
+            }, 100);
+            
+            console.log('Dashboard initialization completed');
+        }
+
+        function switchTab(tabName) {
+            console.log('Switching to tab:', tabName);
+            
+            // Hide all tab contents
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => content.style.display = 'none');
+
+            // Remove active class from all tab items and sidebar items
+            const tabItems = document.querySelectorAll('.tab-item');
+            const sidebarItems = document.querySelectorAll('.sidebar-item');
+            tabItems.forEach(item => item.classList.remove('active'));
+            sidebarItems.forEach(item => item.classList.remove('active'));
+
+            // Show selected content
+            const selectedContent = document.getElementById(tabName + '-content');
+            if (selectedContent) {
+                selectedContent.style.display = 'block';
+                console.log('Showing content for:', tabName);
+            } else {
+                console.log('No content found for:', tabName);
+            }
+
+            // Add active class to clicked tab
+            const clickedTab = event.target;
+            clickedTab.classList.add('active');
+            
+            // Also add active class to corresponding sidebar item
+            const sidebarItem = document.querySelector(`[onclick="switchTab('${tabName}')"]`);
+            if (sidebarItem) {
+                sidebarItem.classList.add('active');
+            }
+
+            // Initialize specific tab content and load data
+            if (tabName === 'overview') {
+                loadOverviewData();
+            } else if (tabName === 'outages') {
+                loadOutagesData();
+            } else if (tabName === 'analytics') {
+                loadAnalyticsData();
+            } else if (tabName === 'crews') {
+                loadCrewsData();
+            } else if (tabName === 'notifications') {
+                loadNotificationsData();
+            } else if (tabName === 'alerts') {
+                loadAlertsData();
+            } else if (tabName === 'map') {
+                initializeMainMap();
+                loadMapData();
+            } else if (tabName === 'correlation-map') {
+                initializeCorrelationMap();
+                loadCorrelationData();
+            }
+        }
+
+        function initializeMainMap() {
+            if (mainMap) return;
+
+            mainMap = L.map('main-map').setView([31.948104, 35.915990], 12);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(mainMap);
+
+            // Load map data
+            loadMapData();
+        }
+
+        function initializeCorrelationMap() {
+            if (correlationMap) return;
+
+            correlationMap = L.map('correlation-map').setView([31.948104, 35.915990], 12);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(correlationMap);
+
+            // Load correlation data
+            loadCorrelationData();
+        }
+
+        async function loadOverviewData() {
+            try {
+                console.log('Loading overview data...');
+                // Use statistics endpoint for overview data
+                const response = await fetch(`${API_BASE}/api/oms/statistics`);
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Overview data received:', data);
+                    updateOverviewStats(data);
+                } else {
+                    console.error('Failed to load overview data:', response.status);
+                }
+            } catch (error) {
+                console.error('Error loading overview data:', error);
+            }
+        }
+
+        async function loadOutagesData() {
+            try {
+                console.log('Loading outages data...');
+                const response = await fetch(`${API_BASE}/api/oms/outages`);
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Outages data received:', data);
+                    updateOutagesStats(data);
+                } else {
+                    console.error('Failed to load outages data:', response.status);
+                }
+            } catch (error) {
+                console.error('Error loading outages data:', error);
+            }
+        }
+
+        async function loadAnalyticsData() {
+            try {
+                console.log('Loading analytics data...');
+                // Use outage trends endpoint for analytics data
+                const response = await fetch(`${API_BASE}/api/oms/analytics/outage-trends?days=24&granularity=hour`);
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Analytics data received:', data);
+                    updateAnalyticsStats(data);
+                } else {
+                    console.error('Failed to load analytics data:', response.status);
+                }
+            } catch (error) {
+                console.error('Error loading analytics data:', error);
+            }
+        }
+
+        async function loadCrewsData() {
+            try {
+                console.log('Loading crews data...');
+                const response = await fetch(`${API_BASE}/api/oms/crews`);
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Crews data received:', data);
+                    updateCrewsStats(data);
+                } else {
+                    console.error('Failed to load crews data:', response.status);
+                }
+            } catch (error) {
+                console.error('Error loading crews data:', error);
+            }
+        }
+
+        async function loadNotificationsData() {
+            try {
+                console.log('Loading notifications data...');
+                const response = await fetch(`${API_BASE}/api/oms/notifications`);
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Notifications data received:', data);
+                    updateNotificationsStats(data);
+                } else {
+                    console.error('Failed to load notifications data:', response.status);
+                }
+            } catch (error) {
+                console.error('Error loading notifications data:', error);
+            }
+        }
+
+        async function loadAlertsData() {
+            try {
+                console.log('Loading alerts data...');
+                // Use correlations endpoint for alerts data
+                const response = await fetch(`${API_BASE}/api/oms/correlations`);
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Alerts data received:', data);
+                    updateAlertsStats(data);
+                } else {
+                    console.error('Failed to load alerts data:', response.status);
+                }
+            } catch (error) {
+                console.error('Error loading alerts data:', error);
+            }
+        }
+
+        async function loadMapData() {
+            try {
+                console.log('Loading map data from:', `${API_BASE}/api/oms/map/data`);
+                const response = await fetch(`${API_BASE}/api/oms/map/data`);
+                console.log('Map data response status:', response.status);
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Map data received:', data);
+                    displayMapData(data);
+                } else {
+                    console.error('Map data API error:', response.status, response.statusText);
+                }
+            } catch (error) {
+                console.error('Error loading map data:', error);
+            }
+        }
+
+        async function loadCorrelationData() {
+            try {
+                console.log('Loading correlation data...');
+                const response = await fetch(`${API_BASE}/api/oms/correlations`);
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Correlation data received:', data);
+                    displayCorrelationData(data);
+                } else {
+                    console.error('Failed to load correlation data:', response.status);
+                }
+            } catch (error) {
+                console.error('Error loading correlation data:', error);
+            }
+        }
+
+        function updateOverviewStats(data) {
+            // Update stat cards with real data
+            if (data.active_outages !== undefined) {
+                document.getElementById('active-outages').textContent = data.active_outages;
+            }
+            if (data.affected_customers !== undefined) {
+                document.getElementById('affected-customers').textContent = data.affected_customers;
+            }
+            if (data.high_confidence !== undefined) {
+                document.getElementById('high-confidence').textContent = data.high_confidence;
+            }
+            if (data.last_update !== undefined) {
+                document.getElementById('last-update').textContent = data.last_update;
+            }
+        }
+
+        function updateOutagesStats(data) {
+            // Update stat cards
+            if (data.outages && Array.isArray(data.outages)) {
+                document.getElementById('outages-count').textContent = data.outages.length;
+                
+                // Count critical outages (high severity)
+                const criticalCount = data.outages.filter(outage => 
+                    outage.outage_severity === 'high' || outage.outage_severity === 'critical'
+                ).length;
+                document.getElementById('critical-outages').textContent = criticalCount;
+                
+                // Display outages list
+                displayOutagesList(data.outages);
+            } else {
+                document.getElementById('outages-count').textContent = '0';
+                document.getElementById('critical-outages').textContent = '0';
+                document.getElementById('outages-list').innerHTML = '<p class="no-data">No outages found</p>';
+            }
+        }
+        
+        function displayOutagesList(outages) {
+            const outagesList = document.getElementById('outages-list');
+            
+            if (!outages || outages.length === 0) {
+                outagesList.innerHTML = '<p class="no-data">No active outages</p>';
+                return;
+            }
+            
+            console.log('Displaying outages:', outages.length, 'outages');
+            console.log('Sample outage data:', outages[0]);
+            
+            outagesList.innerHTML = outages.map(outage => {
+                try {
+                    return `
+                <div class="outage-card">
+                    <div class="outage-header">
+                        <div class="outage-id">${outage.outage_event_uid || 'N/A'}</div>
+                        <div class="outage-status status-${outage.outage_status || 'unknown'}">
+                            ${(outage.outage_status || 'unknown').toUpperCase()}
+                        </div>
+                    </div>
+                    <div class="outage-details">
+                        <div class="detail-row">
+                            <div class="detail-item">
+                                <span class="detail-label">Confidence:</span>
+                                <div class="confidence-bar">
+                                    <div class="confidence-fill" style="width: ${(outage.confidence_score * 100 || 0).toFixed(0)}%"></div>
+                                </div>
+                                <span class="confidence-value">${(outage.confidence_score * 100 || 0).toFixed(0)}%</span>
+                            </div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-item">
+                                <span class="detail-label">Severity:</span>
+                                <span class="severity-badge severity-${outage.outage_severity || 'unknown'}">
+                                    ${(outage.outage_severity || 'unknown').toUpperCase()}
+                                </span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Customers:</span>
+                                <span class="customer-count">${outage.affected_customers_count || 0}</span>
+                            </div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-item">
+                                <span class="detail-label">Sources:</span>
+                                <span class="sources-count">${outage.source_count || 0} systems</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Detected:</span>
+                                <span class="detection-time">${formatDateTime(outage.first_detected_at)}</span>
+                            </div>
+                        </div>
+                        ${getSourceTypesDisplay(outage)}
+                    </div>
+                </div>
+                    `;
+                } catch (error) {
+                    console.error('Error rendering outage card:', error, outage);
+                    return `
+                        <div class="outage-card error">
+                            <div class="outage-header">
+                                <div class="outage-id">Error rendering outage</div>
+                                <div class="outage-status status-error">ERROR</div>
+                            </div>
+                            <div class="outage-details">
+                                <div class="detail-row">
+                                    <div class="detail-item">
+                                        <span class="detail-label">ID:</span>
+                                        <span>${outage.outage_event_uid || 'N/A'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }).join('');
+        }
+        
+        function formatDateTime(dateString) {
+            if (!dateString) return 'Unknown';
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: true
+                });
+            } catch (error) {
+                return 'Invalid Date';
+            }
+        }
+        
+        function getSourceTypesDisplay(outage) {
+            let sourceTypes = '';
+            
+            // Handle different possible formats of source_types
+            if (outage.source_types) {
+                if (typeof outage.source_types === 'string') {
+                    sourceTypes = outage.source_types;
+                } else if (Array.isArray(outage.source_types)) {
+                    sourceTypes = outage.source_types.join(',');
+                } else {
+                    sourceTypes = String(outage.source_types);
+                }
+            } else if (outage.source_type) {
+                // Fallback to singular source_type
+                if (typeof outage.source_type === 'string') {
+                    sourceTypes = outage.source_type;
+                } else if (Array.isArray(outage.source_type)) {
+                    sourceTypes = outage.source_type.join(',');
+                } else {
+                    sourceTypes = String(outage.source_type);
+                }
+            }
+            
+            // If we have source types, display them
+            if (sourceTypes && sourceTypes.trim()) {
+                const types = sourceTypes.split(',').map(type => type.trim()).filter(type => type);
+                if (types.length > 0) {
+                    return `
+                    <div class="detail-row">
+                        <div class="detail-item">
+                            <span class="detail-label">Source Types:</span>
+                            <div class="source-tags">
+                                ${types.map(type => 
+                                    `<span class="source-tag source-${type.toLowerCase()}">${type.toUpperCase()}</span>`
+                                ).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    `;
+                }
+            }
+            
+            return '';
+        }
+
+        function updateAnalyticsStats(data) {
+            if (data.performance_score !== undefined) {
+                document.getElementById('performance-score').textContent = data.performance_score + '%';
+            }
+            if (data.response_time !== undefined) {
+                document.getElementById('response-time').textContent = data.response_time;
+            }
+            
+            // Create analytics chart
+            createAnalyticsChart(data);
+        }
+        
+        function createAnalyticsChart(data) {
+            const ctx = document.getElementById('outageTrendsChart');
+            if (!ctx) return;
+            
+            // Destroy existing chart if it exists
+            if (window.outageTrendsChart && typeof window.outageTrendsChart.destroy === 'function') {
+                window.outageTrendsChart.destroy();
+            }
+            
+            // Create mock data for demonstration
+            const labels = ['9/28/2025'];
+            const outageData = [16.0];
+            const customerData = [15.9];
+            
+            window.outageTrendsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Total Outages',
+                        data: outageData,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }, {
+                        label: 'Customers Affected',
+                        data: customerData,
+                        borderColor: '#dc2626',
+                        backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            grid: {
+                                color: '#e5e7eb'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: '#e5e7eb'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Outage Trends'
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateCrewsStats(data) {
+            if (data.active_crews && Array.isArray(data.active_crews)) {
+                // Count available and assigned crews
+                const availableCount = data.active_crews.filter(crew => 
+                    crew.current_status === 'available' || crew.current_status === 'idle'
+                ).length;
+                const assignedCount = data.active_crews.filter(crew => 
+                    crew.current_status === 'assigned' || crew.current_status === 'working'
+                ).length;
+                
+                document.getElementById('available-crews-count').textContent = availableCount;
+                document.getElementById('assigned-crews-count').textContent = assignedCount;
+                
+                // Display crews list
+                displayCrewsList(data.active_crews);
+            } else {
+                document.getElementById('available-crews-count').textContent = '0';
+                document.getElementById('assigned-crews-count').textContent = '0';
+                document.getElementById('crews-list').innerHTML = '<p class="no-data">No crews found</p>';
+            }
+        }
+        
+        function displayCrewsList(crews) {
+            const crewsList = document.getElementById('crews-list');
+            
+            if (!crews || crews.length === 0) {
+                crewsList.innerHTML = '<p class="no-data">No active crews</p>';
+                return;
+            }
+            
+            crewsList.innerHTML = crews.map(crew => `
+                <div class="crew-card">
+                    <div class="crew-icon">
+                        <i class="fas fa-hard-hat"></i>
+                    </div>
+                    <div class="crew-info">
+                        <div class="crew-name">${crew.team_name || 'Unknown Team'}</div>
+                        <div class="crew-details">${crew.team_type || 'Maintenance'} Team • ${crew.member_count || 0} members</div>
+                        <div class="crew-status ${crew.current_status || 'unknown'}">
+                            ${(crew.current_status || 'unknown').toUpperCase()} ${crew.current_status === 'available' ? 'Available' : crew.current_status || 'Unknown'}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateNotificationsStats(data) {
+            if (data.unread_notifications !== undefined) {
+                document.getElementById('unread-notifications').textContent = data.unread_notifications;
+            }
+            if (data.system_alerts !== undefined) {
+                document.getElementById('system-alerts').textContent = data.system_alerts;
+            }
+        }
+
+        function updateAlertsStats(data) {
+            if (data.correlations && Array.isArray(data.correlations)) {
+                // Count alerts based on correlations
+                const activeCount = data.correlations.length;
+                const criticalCount = data.correlations.filter(corr => 
+                    corr.outage_event && (corr.outage_event.outage_severity === 'high' || corr.outage_event.outage_severity === 'critical')
+                ).length;
+                
+                document.getElementById('active-alerts').textContent = activeCount;
+                document.getElementById('alert-response').textContent = '95%'; // Default value
+                
+                // Display alerts list based on correlations
+                displayAlertsList(data.correlations);
+            } else {
+                document.getElementById('active-alerts').textContent = '0';
+                document.getElementById('alert-response').textContent = '100%';
+                document.getElementById('alerts-list').innerHTML = '<p class="no-data">No alerts found</p>';
+            }
+        }
+        
+        function displayAlertsList(correlations) {
+            const alertsList = document.getElementById('alerts-list');
+            
+            if (!correlations || correlations.length === 0) {
+                alertsList.innerHTML = '<p class="no-data">No active alerts</p>';
+                return;
+            }
+            
+            // Create mock alerts based on correlations
+            const alerts = [
+                {
+                    type: 'critical',
+                    icon: 'fas fa-exclamation-triangle',
+                    title: 'High Outage Volume Detected',
+                    description: 'Outage count has exceeded normal thresholds in the last hour',
+                    timestamp: new Date().toLocaleString()
+                },
+                {
+                    type: 'warning',
+                    icon: 'fas fa-exclamation-circle',
+                    title: 'Source Accuracy Below Threshold',
+                    description: 'ONU source accuracy has dropped below 80%',
+                    timestamp: new Date(Date.now() - 5 * 60 * 1000).toLocaleString()
+                },
+                {
+                    type: 'info',
+                    icon: 'fas fa-info-circle',
+                    title: 'System Maintenance Scheduled',
+                    description: 'Planned maintenance window scheduled for tonight at 2 AM',
+                    timestamp: new Date(Date.now() - 10 * 60 * 1000).toLocaleString()
+                }
+            ];
+            
+            alertsList.innerHTML = alerts.map(alert => `
+                <div class="alert-card">
+                    <div class="alert-icon ${alert.type}">
+                        <i class="${alert.icon}"></i>
+                    </div>
+                    <div class="alert-info">
+                        <div class="alert-title">${alert.title}</div>
+                        <div class="alert-description">${alert.description}</div>
+                        <div class="alert-timestamp">${alert.timestamp}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function displayMapData(data) {
+            if (!mainMap) {
+                console.error('Main map not initialized');
+                return;
+            }
+            
+            console.log('Displaying map data:', data);
+            
+            // Clear existing markers and connection lines
+            mainMap.eachLayer(function(layer) {
+                if (layer instanceof L.Marker || layer instanceof L.CircleMarker || 
+                    layer instanceof L.Polyline || layer instanceof L.Circle) {
+                    mainMap.removeLayer(layer);
+                }
+            });
+
+            const outages = data.map_data?.outages || [];
+            const crews = data.map_data?.crews || [];
+            const events = data.map_data?.events || [];
+            
+            console.log('Map data - Outages:', outages.length, 'Crews:', crews.length, 'Events:', events.length);
+
+            // Add outages
+            console.log('Adding outage markers...');
+            outages.forEach((outage, index) => {
+                console.log(`Adding outage ${index + 1}:`, outage);
+                addOutageMarker(outage);
+            });
+
+            // Add crews
+            crews.forEach(crew => {
+                addCrewMarker(crew);
+            });
+
+            // Add JEPCO HQ
+            if (data.map_data && data.map_data.jepco_hq) {
+                addJEPCOHQMarker(data.map_data.jepco_hq);
+            }
+
+            // Add connection lines from outages to JEPCO center
+            outages.forEach(outage => {
+                addAnimatedConnectionLine(
+                    outage.latitude || outage.event_latitude, 
+                    outage.longitude || outage.event_longitude, 
+                    31.948104, 35.915990, 
+                    getOutageColor(outage.outage_severity || outage.severity || 'medium')
+                );
+            });
+
+            // Add crew assignment connections with metadata
+            crews.forEach(crew => {
+                if (crew.current_assignment && crew.latitude && crew.longitude) {
+                    const assignedOutage = outages.find(outage => 
+                        outage.outage_event_uid === crew.current_assignment.outage_id ||
+                        outage.id === crew.current_assignment.outage_id
+                    );
+                    
+                    if (assignedOutage) {
+                        // Update crew status to reflect assignment
+                        const updatedCrew = {
+                            ...crew,
+                            current_status: 'assigned',
+                            assignment_status: crew.current_assignment.status || 'En Route'
+                        };
+                        
+                        // Add crew-to-outage assignment line
+                        addCrewAssignmentLine(
+                            crew.latitude, 
+                            crew.longitude,
+                            assignedOutage.latitude || assignedOutage.event_latitude, 
+                            assignedOutage.longitude || assignedOutage.event_longitude,
+                            updatedCrew
+                        );
+                    }
+                }
+            });
+
+            // Add events (e.g., KAIFA/SCADA)
+            if (mapLayers.events && Array.isArray(events)) {
+                events.forEach(ev => addEventMarker(ev));
+            }
+        }
+
+        function displayCorrelationData(data) {
+            if (!correlationMap) return;
+
+            console.log('Correlation data received:', data);
+            
+            // Clear existing markers
+            correlationMap.eachLayer(function(layer) {
+                if (layer instanceof L.Marker || layer instanceof L.CircleMarker) {
+                    correlationMap.removeLayer(layer);
+                }
+            });
+
+            // Add correlation markers
+            if (data.correlations) {
+                console.log('Processing correlations:', data.correlations.length);
+                console.log('Sample correlation structure:', data.correlations[0]);
+                
+                data.correlations.forEach((correlation, index) => {
+                    console.log(`Processing correlation ${index}:`, correlation);
+                    addCorrelationMarker(correlation);
+                });
+            } else {
+                console.warn('No correlations found in data:', data);
+            }
+        }
+
+        function addOutageMarker(outage) {
+            if (!mainMap || !mapLayers.outages) {
+                console.log('Skipping outage marker - map not ready or outages layer disabled');
+                return;
+            }
+            
+            console.log('Creating outage marker for:', outage);
+
+            const severity = outage.outage_severity || outage.severity || 'medium';
+            const color = getOutageColor(severity);
+            
+            // Create custom icon based on severity
+            const icon = L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="
+                    width: 20px; 
+                    height: 20px; 
+                    background-color: ${color}; 
+                    border: 2px solid white; 
+                    border-radius: 50%; 
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: center;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                ">
+                    <i class="fas fa-bolt" style="color: white; font-size: 10px;"></i>
+                </div>`,
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            });
+
+            const marker = L.marker([outage.latitude || outage.event_latitude, outage.longitude || outage.event_longitude], { icon });
+
+            const outageId = outage.outage_event_uid || outage.id || 'unknown';
+            const customersContainerId = `customers-${outageId}`;
+
+            marker.bindPopup(`
+                <div class="outage-popup">
+                    <h4>Outage ${outageId}</h4>
+                    <p><strong>Severity:</strong> ${severity}</p>
+                    <p><strong>Status:</strong> ${outage.outage_status || outage.status}</p>
+                    <p><strong>Customers:</strong> ${outage.affected_customers_count || outage.affected_customers || 0}</p>
+                    <p><strong>Confidence:</strong> ${((outage.confidence_score || 0) * 100).toFixed(1)}%</p>
+                    <div id="${customersContainerId}" style="margin-top:8px;">
+                        <em>Loading customer details…</em>
+                    </div>
+                </div>
+            `);
+
+            marker.on('popupopen', () => {
+                loadOutageCustomers(outageId, customersContainerId);
+            });
+
+            marker.addTo(mainMap);
+        }
+
+        // Fetch and render customers affected by an outage into a container inside the popup
+        async function loadOutageCustomers(outageId, containerId) {
+            try {
+                const el = document.getElementById(containerId);
+                if (!el) return;
+                const resp = await fetch(`${API_BASE}/api/oms/outages/${encodeURIComponent(outageId)}/customers`);
+                if (!resp.ok) {
+                    el.innerHTML = '<span style="color:#6b7280">No customer details available.</span>';
+                    return;
+                }
+                const data = await resp.json();
+                const customers = Array.isArray(data?.customers) ? data.customers : (Array.isArray(data) ? data : []);
+                if (customers.length === 0) {
+                    el.innerHTML = '<span style="color:#6b7280">No customer records found for this outage.</span>';
+                    return;
+                }
+                const top = customers.slice(0, 5);
+                el.innerHTML = `
+                    <div style="margin:4px 0;font-weight:600;color:#111827;">Customers</div>
+                    <ul style="padding-left:16px;margin:4px 0;max-height:120px;overflow:auto;">
+                        ${top.map(c => `<li style=\"margin:2px 0;\">${(c.name||c.customer_name||'Customer')} - ${(c.account_id||c.meter_id||'N/A')}</li>`).join('')}
+                    </ul>
+                    ${customers.length > 5 ? `<div style=\"color:#6b7280;font-size:12px;\">+${customers.length-5} more…</div>` : ''}
+                `;
+            } catch (e) {
+                const el = document.getElementById(containerId);
+                if (el) el.innerHTML = '<span style="color:#ef4444">Failed to load customer details.</span>';
+                console.error('Failed to load outage customers', e);
+            }
+        }
+
+        // Render single event marker (e.g., KAIFA/SCADA)
+        function addEventMarker(ev) {
+            if (!mainMap || !mapLayers.events) return;
+            const icon = L.divIcon({
+                className: 'event-marker',
+                html: `<div style="width:14px;height:14px;background:#3b82f6;border:2px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.3);"><i class="fas fa-bolt" style="color:white;font-size:8px"></i></div>`,
+                iconSize: [14,14],
+                iconAnchor: [7,7]
+            });
+            const lat = ev.latitude || ev.event_latitude || 31.9539;
+            const lng = ev.longitude || ev.event_longitude || 35.9106;
+            const marker = L.marker([lat,lng], { icon });
+            marker.bindPopup(`
+                <div class="outage-popup">
+                    <h4>${(ev.source||ev.type||'event').toString().toUpperCase()} Event</h4>
+                    <p><strong>ID:</strong> ${ev.id || ev.event_id || 'N/A'}</p>
+                    <p><strong>Type:</strong> ${ev.event_type || 'unknown'}</p>
+                    <p><strong>Severity:</strong> ${ev.severity || 'medium'}</p>
+                    ${ev.meter_id ? `<p><strong>Meter:</strong> ${ev.meter_id}</p>` : ''}
+                    ${ev.customer_id ? `<p><strong>Customer:</strong> ${ev.customer_id}</p>` : ''}
+                </div>
+            `);
+            marker.addTo(mainMap);
+        }
+
+        function addCrewMarker(crew) {
+            if (!mainMap) return;
+
+            const icon = L.divIcon({
+                className: 'crew-marker',
+                html: `<div class="crew-icon"><i class="fas fa-hard-hat"></i></div>`,
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            });
+
+            const marker = L.marker([crew.latitude, crew.longitude], { icon });
+
+            // Determine actual status based on assignments
+            const actualStatus = crew.current_assignment ? 'assigned' : (crew.current_status || 'available');
+            const statusText = crew.current_assignment ? 
+                `Assigned to Outage ${crew.current_assignment.outage_id}` : 
+                (crew.current_status || 'Available');
+
+            marker.bindPopup(`
+                <div class="crew-popup">
+                    <h4>${crew.team_name || crew.name}</h4>
+                    <p><strong>Type:</strong> ${crew.team_type || crew.type}</p>
+                    <p><strong>Status:</strong> ${statusText}</p>
+                    <p><strong>Leader:</strong> ${crew.team_leader}</p>
+                    <p><strong>Members:</strong> ${crew.member_count || 0}</p>
+                    ${crew.current_assignment ? 
+                        `<p><strong>Assignment:</strong> ${crew.current_assignment.status || 'En Route'}</p>` : 
+                        ''
+                    }
+                </div>
+            `);
+
+            marker.addTo(mainMap);
+        }
+
+        function addJEPCOHQMarker(hq) {
+            if (!mainMap) return;
+
+            const icon = L.divIcon({
+                className: 'jepco-hq-marker',
+                html: `<div class="hq-icon"><i class="fas fa-building"></i></div>`,
+                iconSize: [40, 40],
+                iconAnchor: [20, 20]
+            });
+
+            const marker = L.marker([hq.latitude, hq.longitude], { icon });
+
+            marker.bindPopup(`
+                <div class="hq-popup">
+                    <h4>${hq.name}</h4>
+                    <p><strong>Address:</strong> ${hq.address}</p>
+                    <p><strong>Status:</strong> ${hq.status}</p>
+                </div>
+            `);
+
+            marker.addTo(mainMap);
+        }
+
+        function addCorrelationMarker(correlation) {
+            if (!correlationMap) return;
+
+            // Extract coordinates from the correlation data structure
+            let lat, lng;
+            
+            // Try different possible coordinate field names
+            if (correlation.outage_event && correlation.outage_event.event_latitude && correlation.outage_event.event_longitude) {
+                lat = parseFloat(correlation.outage_event.event_latitude);
+                lng = parseFloat(correlation.outage_event.event_longitude);
+            } else if (correlation.latitude && correlation.longitude) {
+                lat = parseFloat(correlation.latitude);
+                lng = parseFloat(correlation.longitude);
+            } else if (correlation.event_latitude && correlation.event_longitude) {
+                lat = parseFloat(correlation.event_latitude);
+                lng = parseFloat(correlation.event_longitude);
+            } else {
+                console.warn('No valid coordinates found for correlation:', correlation);
+                return; // Skip this correlation if no valid coordinates
+            }
+
+            // Validate coordinates
+            if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
+                console.warn('Invalid coordinates for correlation:', lat, lng, correlation);
+                return; // Skip this correlation if coordinates are invalid
+            }
+
+            const confidence = correlation.confidence_score || correlation.confidence || 0;
+            const outageEvent = correlation.outage_event || {};
+            
+            const marker = L.circleMarker([lat, lng], {
+                radius: 10,
+                fillColor: getCorrelationColor(confidence),
+                color: '#fff',
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.8
+            });
+
+            marker.bindPopup(`
+                <div class="correlation-popup">
+                    <h4>Correlation ${outageEvent.outage_event_uid || correlation.id || 'Unknown'}</h4>
+                    <p><strong>Confidence:</strong> ${(confidence * 100).toFixed(1)}%</p>
+                    <p><strong>Status:</strong> ${outageEvent.outage_status || 'Unknown'}</p>
+                    <p><strong>Severity:</strong> ${outageEvent.outage_severity || 'Unknown'}</p>
+                    <p><strong>Customers Affected:</strong> ${outageEvent.affected_customers_count || 0}</p>
+                    <p><strong>Sources:</strong> ${correlation.source_events ? correlation.source_events.length : 0} systems</p>
+                </div>
+            `);
+
+            marker.addTo(correlationMap);
+        }
+
+        function getOutageColor(severity) {
+            switch(severity) {
+                case 'critical': return '#dc2626';
+                case 'high': return '#f59e0b';
+                case 'medium': return '#3b82f6';
+                case 'low': return '#10b981';
+                default: return '#6b7280';
+            }
+        }
+
+        // Add animated dashed connection line
+        function addAnimatedConnectionLine(lat1, lng1, lat2, lng2, color = '#ff6b6b') {
+            if (!mainMap) return;
+
+            const line = L.polyline([[lat1, lng1], [lat2, lng2]], {
+                color: color,
+                weight: 2,
+                opacity: 0.8,
+                dashArray: '10, 10',
+                className: 'animated-line'
+            }).addTo(mainMap);
+
+            // Add animation effect
+            let dashOffset = 0;
+            const animate = () => {
+                dashOffset -= 1;
+                line.setStyle({
+                    dashArray: '10, 10',
+                    dashOffset: dashOffset
+                });
+                requestAnimationFrame(animate);
+            };
+            animate();
+        }
+
+        // Add crew assignment line with metadata
+        function addCrewAssignmentLine(lat1, lng1, lat2, lng2, crew) {
+            if (!mainMap) return;
+
+            const line = L.polyline([[lat1, lng1], [lat2, lng2]], {
+                color: '#10b981',
+                weight: 4,
+                opacity: 1.0,
+                dashArray: '20, 8',
+                className: 'crew-assignment-line'
+            }).addTo(mainMap);
+
+            // Add assignment metadata at midpoint
+            const midPoint = [
+                (lat1 + lat2) / 2,
+                (lng1 + lng2) / 2
+            ];
+            
+            const assignmentLabel = L.marker(midPoint, {
+                icon: L.divIcon({
+                    className: 'crew-assignment-label',
+                    html: `<div class="assignment-metadata">
+                        <div class="assignment-header">
+                            <i class="fas fa-hard-hat"></i>
+                            <span class="crew-name">${crew.team_name || 'Crew Team'}</span>
+                        </div>
+                        <div class="assignment-details">
+                            <div class="assignment-status">
+                                <i class="fas fa-clock"></i>
+                                <span>Assigned ${crew.current_assignment?.assigned_at ? formatDateTime(crew.current_assignment.assigned_at) : 'Recently'}</span>
+                            </div>
+                            <div class="assignment-priority">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <span>Priority: ${crew.current_assignment?.priority || 'Medium'}</span>
+                            </div>
+                            <div class="assignment-progress">
+                                <i class="fas fa-tasks"></i>
+                                <span>Status: ${crew.current_assignment?.status || 'En Route'}</span>
+                            </div>
+                        </div>
+                    </div>`,
+                    iconSize: [280, 100],
+                    iconAnchor: [140, 50]
+                })
+            }).addTo(mainMap);
+
+            // Add animation effect
+            let dashOffset = 0;
+            const animate = () => {
+                dashOffset -= 1;
+                line.setStyle({
+                    dashArray: '15, 5',
+                    dashOffset: dashOffset
+                });
+                requestAnimationFrame(animate);
+            };
+            animate();
+        }
+
+        function getCorrelationColor(confidence) {
+            if (confidence > 0.8) return '#10b981';
+            if (confidence > 0.6) return '#f59e0b';
+            return '#dc2626';
+        }
+
+        function createNewOutage() {
+            alert('Create New Outage functionality would be implemented here');
+        }
+
+        function refreshData() {
+            console.log('Refreshing all data...');
+            
+            // Load data for all tabs
+            loadOverviewData();
+            loadOutagesData();
+            loadAnalyticsData();
+            loadCrewsData();
+            loadNotificationsData();
+            loadAlertsData();
+            
+            // Refresh map data if map is visible
+            if (mainMap) {
+                loadMapData();
+            }
+            
+            // Refresh map data if maps are initialized
+            if (mainMap) {
+                loadMapData();
+            }
+            if (correlationMap) {
+                loadCorrelationData();
+            }
+            
+            console.log('Data refresh completed');
+        }
+
+        function exportData() {
+            console.log('Exporting data...');
+            alert('Export functionality would be implemented here');
+        }
+
+        function openAnalytics() {
+            console.log('Opening analytics...');
+            switchTab('analytics');
+        }
+
+        function initializeCharts() {
+            // Initialize trend chart
+            const trendCtx = document.getElementById('trendChart');
+            if (trendCtx) {
+                new Chart(trendCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['10:00 AM', '11:00 AM', '12:00 PM'],
+                        datasets: [{
+                            label: 'Outages',
+                            data: [11, 7, 2],
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 12
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Initialize source chart
+            const sourceCtx = document.getElementById('sourceChart');
+            if (sourceCtx) {
+                new Chart(sourceCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['ONU', 'Call Center', 'KAIFA', 'SCADA'],
+                        datasets: [{
+                            data: [12, 3, 8, 5],
+                            backgroundColor: ['#f59e0b', '#10b981', '#ef4444', '#3b82f6'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html>
