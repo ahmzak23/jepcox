@@ -1978,6 +1978,10 @@
     <script>
         // Global variables
         let mainMap, correlationMap;
+        // Track animated/assignment lines so we can remove them on toggle
+        let activeConnectionLines = [];
+        let activeCrewAssignmentLines = [];
+        let activeCrewAssignmentLabels = [];
         const API_BASE = 'http://localhost:9100';
         
         // Map layer visibility control
@@ -2065,6 +2069,10 @@
         function toggleMapLayer(layerType) {
             mapLayers[layerType] = !mapLayers[layerType];
             console.log(`Toggled ${layerType} layer:`, mapLayers[layerType]);
+            // If flow lines toggled off, remove existing lines immediately
+            if (layerType === 'flowLines' && !mapLayers.flowLines && mainMap) {
+                clearFlowLines();
+            }
             
             // Refresh map data to apply layer visibility
             if (mainMap) {
@@ -2731,12 +2739,24 @@
                     mainMap.removeLayer(layer);
                 }
             });
+            // Also clear tracked flow lines (safety)
+            clearFlowLines();
 
             const outages = data.map_data?.outages || [];
             const crews = data.map_data?.crews || [];
             const events = data.map_data?.events || [];
+            const assets = data.map_data?.assets || {};
+            const substations = assets.substations || [];
+            const topologyConnections = data.map_data?.topology_connections || [];
             
-            console.log('Map data - Outages:', outages.length, 'Crews:', crews.length, 'Events:', events.length);
+            console.log('Map data - Outages:', outages.length, 'Crews:', crews.length, 'Events:', events.length, 'Substations:', substations.length, 'Topology Connections:', topologyConnections.length);
+
+            // Add substations FIRST (so they appear under other markers)
+            console.log('Adding substation markers...');
+            substations.forEach((substation, index) => {
+                console.log(`Adding substation ${index + 1}:`, substation);
+                addSubstationMarker(substation);
+            });
 
             // Add outages
             console.log('Adding outage markers...');
@@ -2755,47 +2775,59 @@
                 addJEPCOHQMarker(data.map_data.jepco_hq);
             }
 
-            // Add connection lines from outages to JEPCO center
-            outages.forEach(outage => {
-                addAnimatedConnectionLine(
-                    outage.latitude || outage.event_latitude, 
-                    outage.longitude || outage.event_longitude, 
-                    31.948104, 35.915990, 
-                    getOutageColor(outage.outage_severity || outage.severity || 'medium')
-                );
-            });
+            // Add connection lines from outages to JEPCO center (respect layer toggle)
+            if (mapLayers.flowLines) {
+                outages.forEach(outage => {
+                    addAnimatedConnectionLine(
+                        outage.latitude || outage.event_latitude, 
+                        outage.longitude || outage.event_longitude, 
+                        31.948104, 35.915990, 
+                        getOutageColor(outage.outage_severity || outage.severity || 'medium')
+                    );
+                });
+            }
 
             // Add crew assignment connections with metadata
-            crews.forEach(crew => {
-                if (crew.current_assignment && crew.latitude && crew.longitude) {
-                    const assignedOutage = outages.find(outage => 
-                        outage.outage_event_uid === crew.current_assignment.outage_id ||
-                        outage.id === crew.current_assignment.outage_id
-                    );
-                    
-                    if (assignedOutage) {
-                        // Update crew status to reflect assignment
-                        const updatedCrew = {
-                            ...crew,
-                            current_status: 'assigned',
-                            assignment_status: crew.current_assignment.status || 'En Route'
-                        };
-                        
-                        // Add crew-to-outage assignment line
-                        addCrewAssignmentLine(
-                            crew.latitude, 
-                            crew.longitude,
-                            assignedOutage.latitude || assignedOutage.event_latitude, 
-                            assignedOutage.longitude || assignedOutage.event_longitude,
-                            updatedCrew
+            if (mapLayers.flowLines) {
+                crews.forEach(crew => {
+                    if (crew.current_assignment && crew.latitude && crew.longitude) {
+                        const assignedOutage = outages.find(outage => 
+                            outage.outage_event_uid === crew.current_assignment.outage_id ||
+                            outage.id === crew.current_assignment.outage_id
                         );
+                        
+                        if (assignedOutage) {
+                            // Update crew status to reflect assignment
+                            const updatedCrew = {
+                                ...crew,
+                                current_status: 'assigned',
+                                assignment_status: crew.current_assignment.status || 'En Route'
+                            };
+                            
+                            // Add crew-to-outage assignment line
+                            addCrewAssignmentLine(
+                                crew.latitude, 
+                                crew.longitude,
+                                assignedOutage.latitude || assignedOutage.event_latitude, 
+                                assignedOutage.longitude || assignedOutage.event_longitude,
+                                updatedCrew
+                            );
+                        }
                     }
-                }
-            });
+                });
+            }
 
             // Add events (e.g., KAIFA/SCADA)
             if (mapLayers.events && Array.isArray(events)) {
                 events.forEach(ev => addEventMarker(ev));
+            }
+
+            // Add network topology connections
+            if (mapLayers.flowLines && topologyConnections.length > 0) {
+                console.log('Adding topology connections...');
+                topologyConnections.forEach(conn => {
+                    addTopologyConnection(conn);
+                });
             }
         }
 
@@ -2858,12 +2890,14 @@
 
             const marker = L.marker([outage.latitude || outage.event_latitude, outage.longitude || outage.event_longitude], { icon });
 
-            const outageId = outage.outage_event_uid || outage.id || 'unknown';
-            const customersContainerId = `customers-${outageId}`;
+            // Use UUID (primary key) for API lookups; keep human-friendly OMS_* for display
+            const outageUuid = outage.id || 'unknown';
+            const outageDisplayId = outage.outage_event_uid || outage.id || 'unknown';
+            const customersContainerId = `customers-${outageUuid}`;
 
             marker.bindPopup(`
                 <div class="outage-popup">
-                    <h4>Outage ${outageId}</h4>
+                    <h4>Outage ${outageDisplayId}</h4>
                     <p><strong>Severity:</strong> ${severity}</p>
                     <p><strong>Status:</strong> ${outage.outage_status || outage.status}</p>
                     <p><strong>Customers:</strong> ${outage.affected_customers_count || outage.affected_customers || 0}</p>
@@ -2875,7 +2909,7 @@
             `);
 
             marker.on('popupopen', () => {
-                loadOutageCustomers(outageId, customersContainerId);
+                loadOutageCustomers(outageUuid, customersContainerId);
             });
 
             marker.addTo(mainMap);
@@ -2970,6 +3004,57 @@
             `);
 
             marker.addTo(mainMap);
+        }
+
+        function addSubstationMarker(substation) {
+            if (!mainMap || !mapLayers.assets) {
+                console.log('Skipping substation marker - map not ready or assets layer disabled');
+                return;
+            }
+            
+            console.log('Creating substation marker for:', substation);
+
+            // Create distinctive substation icon
+            const icon = L.divIcon({
+                className: 'substation-marker',
+                html: `<div style="
+                    width: 32px; 
+                    height: 32px; 
+                    background-color: #0891b2; 
+                    border: 3px solid #ffffff; 
+                    border-radius: 50%; 
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: center;
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+                    cursor: pointer;
+                ">
+                    <i class="fas fa-industry" style="color: white; font-size: 16px;"></i>
+                </div>`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 16],
+                popupAnchor: [0, -16]
+            });
+
+            const marker = L.marker([substation.latitude, substation.longitude], { icon });
+
+            marker.bindPopup(`
+                <div class="substation-popup" style="min-width: 200px;">
+                    <h4 style="color: #0891b2; margin-bottom: 8px;">
+                        <i class="fas fa-industry"></i> ${substation.name}
+                    </h4>
+                    <p><strong>ID:</strong> ${substation.substation_id}</p>
+                    <p><strong>Voltage Level:</strong> ${substation.voltage_level || '33kV'}</p>
+                    <p><strong>Status:</strong> <span style="color: ${substation.status === 'active' ? 'green' : 'red'};">
+                        ${substation.status || 'active'}
+                    </span></p>
+                    <p><strong>Load:</strong> ${substation.load_percentage || 75}%</p>
+                    <p><strong>Location:</strong> ${substation.latitude.toFixed(4)}, ${substation.longitude.toFixed(4)}</p>
+                </div>
+            `);
+
+            marker.addTo(mainMap);
+            console.log('Substation marker added to map');
         }
 
         function addJEPCOHQMarker(hq) {
@@ -3069,6 +3154,7 @@
                 dashArray: '10, 10',
                 className: 'animated-line'
             }).addTo(mainMap);
+            activeConnectionLines.push(line);
 
             // Add animation effect
             let dashOffset = 0;
@@ -3094,6 +3180,7 @@
                 dashArray: '20, 8',
                 className: 'crew-assignment-line'
             }).addTo(mainMap);
+            activeCrewAssignmentLines.push(line);
 
             // Add assignment metadata at midpoint
             const midPoint = [
@@ -3128,6 +3215,7 @@
                     iconAnchor: [140, 50]
                 })
             }).addTo(mainMap);
+            activeCrewAssignmentLabels.push(assignmentLabel);
 
             // Add animation effect
             let dashOffset = 0;
@@ -3140,6 +3228,42 @@
                 requestAnimationFrame(animate);
             };
             animate();
+        }
+
+        function clearFlowLines() {
+            // Remove animated outage->HQ lines
+            activeConnectionLines.forEach(l => { try { mainMap.removeLayer(l); } catch(e){} });
+            activeConnectionLines = [];
+            // Remove crew assignment lines and labels
+            activeCrewAssignmentLines.forEach(l => { try { mainMap.removeLayer(l); } catch(e){} });
+            activeCrewAssignmentLines = [];
+            activeCrewAssignmentLabels.forEach(m => { try { mainMap.removeLayer(m); } catch(e){} });
+            activeCrewAssignmentLabels = [];
+        }
+
+        function addTopologyConnection(conn) {
+            if (!mainMap) return;
+
+            const line = L.polyline([
+                [conn.outage_lat, conn.outage_lng], 
+                [conn.substation_lat, conn.substation_lng]
+            ], {
+                color: '#dc2626',  // Red for outage-to-substation
+                weight: 3,
+                opacity: 0.7,
+                dashArray: '8, 4',
+                className: 'topology-connection'
+            }).addTo(mainMap);
+
+            // Add connection info to popup
+            line.bindPopup(`
+                <div style="font-size: 12px;">
+                    <strong>Network Topology</strong><br>
+                    <strong>Outage:</strong> ${conn.outage_id}<br>
+                    <strong>Substation:</strong> ${conn.substation_name}<br>
+                    <strong>Type:</strong> ${conn.connection_type}
+                </div>
+            `);
         }
 
         function getCorrelationColor(confidence) {

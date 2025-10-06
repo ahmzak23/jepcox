@@ -94,11 +94,21 @@ class OnuConsumer:
             conn = self.db_pool.getconn()
             cur = conn.cursor()
             
-            # Call the PostgreSQL function to insert ONU event
-            cur.execute("SELECT insert_onu_event_from_json(%s::jsonb)", (json.dumps(event),))
+            # Use enhanced function that automatically syncs meter status in oms_meters
+            cur.execute("SELECT insert_onu_event_from_json_with_meter_sync(%s::jsonb)", (json.dumps(event),))
             event_id = cur.fetchone()[0]
             conn.commit()
-            self.logger.info(f"Stored ONU event {event_id} to database")
+            
+            # Enhanced logging for power-related events
+            event_type = event.get('type', '')
+            if event_type in ('ONU_LastGaspAlert', 'ONU_PowerRestored'):
+                onu_id = event.get('onuId', 'unknown')
+                if event_type == 'ONU_LastGaspAlert':
+                    self.logger.warning(f"ONU Last Gasp Alert - ONU {onu_id} power OFF, meter status updated")
+                else:
+                    self.logger.info(f"ONU Power Restored - ONU {onu_id} power ON, meter status updated")
+            
+            self.logger.info(f"Stored ONU event {event_id} to database with meter sync")
             return True
         except Exception as e:
             self.logger.error(f"Failed to store ONU event to database: {e}")

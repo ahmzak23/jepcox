@@ -2809,10 +2809,12 @@ def get_map_data(
                     
                     outages = []
                     for row in rows:
-                        # Use default coordinates around Amman if not provided
-                        lat = float(row['event_latitude']) if row['event_latitude'] else 31.9539 + (len(outages) * 0.01) - 0.05
-                        lng = float(row['event_longitude']) if row['event_longitude'] else 35.9106 + (len(outages) * 0.015) - 0.075
-                        
+                        # Use only real coordinates; skip records without location
+                        lat = float(row['event_latitude']) if row['event_latitude'] is not None else None
+                        lng = float(row['event_longitude']) if row['event_longitude'] is not None else None
+                        if lat is None or lng is None:
+                            continue
+
                         outages.append({
                             "id": str(row['id']),
                             "outage_event_uid": row['event_id'],
@@ -2828,9 +2830,12 @@ def get_map_data(
                             "confidence_score": float(row['confidence_score']) if row['confidence_score'] else 0.7,
                             "detected_at": row['first_detected_at'].isoformat() if row['first_detected_at'] else "2025-09-25T10:00:00Z",
                             "source_types": row['source_types'] or "unknown",
-                            "substation_name": "Unknown",
-                            "feeder_name": "Unknown",
-                            "city": "Amman",
+                        "substation_name": "Unknown",
+                        "feeder_name": "Unknown",
+                        "city": "Amman",
+                        "substation_id": None,  # Will be populated with actual substation link
+                        "substation_lat": None,
+                        "substation_lng": None,
                             "correlation_info": {
                                 "total_sources": row.get('total_sources', 0),
                                 "is_correlated": row.get('total_sources', 0) > 1,
@@ -2878,25 +2883,35 @@ def get_map_data(
                     # Return real data from database
                     events = []
                     
-                    # Get SCADA events
+                    # Get SCADA events with real coordinates only (fallback to substation coords if available)
                     cursor.execute("""
-                        SELECT event_id, event_type, severity, timestamp, voltage_level, substation_name
-                        FROM scada_events 
-                        WHERE timestamp > NOW() - INTERVAL '7 days'
-                        LIMIT 10
+                        SELECT 
+                            e.event_id,
+                            e.event_type,
+                            e.severity,
+                            e.timestamp,
+                            COALESCE(e.latitude, ns.location_lat) AS latitude,
+                            COALESCE(e.longitude, ns.location_lng) AS longitude,
+                            e.substation_id
+                        FROM scada_events e
+                        LEFT JOIN network_substations ns ON e.substation_id = ns.substation_id
+                        WHERE e.timestamp > NOW() - INTERVAL '7 days'
+                        ORDER BY e.timestamp DESC
+                        LIMIT 1000
                     """)
                     for row in cursor.fetchall():
+                        if row['latitude'] is None or row['longitude'] is None:
+                            continue
                         events.append({
-                            "id": f"scada_{row[0]}",
+                            "id": f"scada_{row['event_id']}",
                             "type": "scada",
                             "source": "scada",
-                            "latitude": 31.9539,
-                            "longitude": 35.9106,
-                            "event_type": row[1] or "breaker_trip",
-                            "severity": row[2] or "high",
-                            "timestamp": row[3].isoformat() if row[3] else "2025-09-25T11:00:00Z",
-                            "voltage_level": str(row[4]) if row[4] else "12.47",
-                            "substation": row[5] or "Unknown"
+                            "latitude": float(row['latitude']),
+                            "longitude": float(row['longitude']),
+                            "event_type": row['event_type'] or "breaker_trip",
+                            "severity": row['severity'] or "high",
+                            "timestamp": row['timestamp'].isoformat() if row['timestamp'] else None,
+                            "substation": row['substation_id']
                         })
                     
                     # Get Kaifa events
@@ -2908,15 +2923,17 @@ def get_map_data(
                         LIMIT 1000
                     """)
                     for row in cursor.fetchall():
+                        if row[6] is None or row[7] is None:
+                            continue
                         events.append({
                             "id": f"kaifa_{row[0]}",
                             "type": "kaifa",
                             "source": "kaifa",
-                            "latitude": float(row[6]) if row[6] is not None else 31.9539,
-                            "longitude": float(row[7]) if row[7] is not None else 35.9106,
+                            "latitude": float(row[6]),
+                            "longitude": float(row[7]),
                             "event_type": row[1] or "last_gasp",
                             "severity": row[2] or "medium",
-                            "timestamp": row[3].isoformat() if row[3] else "2025-09-25T12:00:00Z",
+                            "timestamp": row[3].isoformat() if row[3] else None,
                             "meter_id": row[4] or "Unknown",
                             "customer_id": row[5] or "Unknown"
                         })
@@ -2938,12 +2955,14 @@ def get_map_data(
                             LIMIT 2000
                         """)
                         for row in cursor.fetchall():
+                            if row[6] is None or row[7] is None:
+                                continue
                             events.append({
                                 "id": f"kaifa_{row[0]}",
                                 "type": "kaifa",
                                 "source": "kaifa",
-                                "latitude": float(row[6]) if row[6] is not None else 31.9539,
-                                "longitude": float(row[7]) if row[7] is not None else 35.9106,
+                                "latitude": float(row[6]),
+                                "longitude": float(row[7]),
                                 "event_type": row[1] or "last_gasp",
                                 "severity": row[2] or "medium",
                                 "timestamp": row[3].isoformat() if row[3] else None,
@@ -2963,15 +2982,17 @@ def get_map_data(
                             LIMIT 1000
                         """)
                         for row in cursor.fetchall():
+                            if row[4] is None or row[5] is None:
+                                continue
                             events.append({
                                 "id": f"onu_{row[0]}",
                                 "type": "onu",
                                 "source": "onu",
-                                "latitude": float(row[4]) if row[4] is not None else 31.9539,
-                                "longitude": float(row[5]) if row[5] is not None else 35.9106,
+                                "latitude": float(row[4]),
+                                "longitude": float(row[5]),
                                 "event_type": row[1] or "signal_loss",
                                 "severity": row[2] or "low",
-                                "timestamp": row[3].isoformat() if row[3] else "2025-09-25T12:15:00Z",
+                                "timestamp": row[3].isoformat() if row[3] else None,
                                 "onu_id": row[6] or "Unknown"
                             })
                     except Exception:
@@ -2987,15 +3008,17 @@ def get_map_data(
                             LIMIT 1000
                         """)
                         for row in cursor.fetchall():
+                            if row[5] is None or row[6] is None:
+                                continue
                             events.append({
                                 "id": f"call_{row[0]}",
                                 "type": "call_center",
                                 "source": "call_center",
-                                "latitude": float(row[5]) if row[5] is not None else 31.9539,
-                                "longitude": float(row[6]) if row[6] is not None else 35.9106,
+                                "latitude": float(row[5]),
+                                "longitude": float(row[6]),
                                 "event_type": row[1] or "power_outage_report",
                                 "severity": row[2] or "medium",
-                                "timestamp": row[3].isoformat() if row[3] else "2025-09-25T12:30:00Z",
+                                "timestamp": row[3].isoformat() if row[3] else None,
                                 "customer_id": row[4] or "Unknown"
                             })
                     except Exception:
@@ -3017,12 +3040,14 @@ def get_map_data(
                             LIMIT 1000
                         """)
                         for row in cursor.fetchall():
+                            if row[5] is None or row[6] is None:
+                                continue
                             events.append({
                                 "id": f"call_{row[0]}",
                                 "type": "call_center",
                                 "source": "call_center",
-                                "latitude": float(row[5]) if row[5] is not None else 31.9539,
-                                "longitude": float(row[6]) if row[6] is not None else 35.9106,
+                                "latitude": float(row[5]),
+                                "longitude": float(row[6]),
                                 "event_type": row[1] or "power_outage_report",
                                 "severity": row[2] or "medium",
                                 "timestamp": row[3].isoformat() if row[3] else None,
@@ -3083,8 +3108,8 @@ def get_map_data(
                             "team_id": row['team_id'],
                             "name": row['team_name'] or "Unknown Crew",
                             "type": row['team_type'] or "line_crew",
-                            "latitude": float(row['location_lat']) if row['location_lat'] else 31.9539,
-                            "longitude": float(row['location_lng']) if row['location_lng'] else 35.9106,
+                            "latitude": float(row['location_lat']) if row['location_lat'] is not None else None,
+                            "longitude": float(row['location_lng']) if row['location_lng'] is not None else None,
                             "status": row['current_status'] or "available",
                             "team_leader": row['team_leader_name'] or "Unknown",
                             "team_leader_phone": row['team_leader_phone'],
@@ -3095,7 +3120,7 @@ def get_map_data(
                             "equipment": ["bucket_truck", "test_equipment", "safety_gear"]
                         })
                     
-                    map_data["crews"] = crews
+                    map_data["crews"] = [c for c in crews if c.get("latitude") is not None and c.get("longitude") is not None]
                 else:
                     # Database is empty, return empty array
                     map_data["crews"] = []
@@ -3121,27 +3146,30 @@ def get_map_data(
         if "assets" in requested_types:
             # Check if database has real data, otherwise return empty
             try:
-                cursor.execute("SELECT COUNT(*) FROM network_substations")
-                asset_count = cursor.fetchone()[0]
+                cursor.execute("SELECT COUNT(*) as count FROM network_substations")
+                asset_count_result = cursor.fetchone()
+                asset_count = asset_count_result['count'] if asset_count_result else 0
                 
                 if asset_count > 0:
-                    # Return real data from database
+                    # Return real data from database (using correct column names)
                     cursor.execute("""
-                        SELECT substation_id, name, voltage_level, status, latitude, longitude
+                        SELECT substation_id, name, voltage_level, status, location_lat, location_lng
                         FROM network_substations 
-                        LIMIT 10
+                        WHERE location_lat IS NOT NULL AND location_lng IS NOT NULL
+                        LIMIT 50
                     """)
                     
                     substations = []
                     for row in cursor.fetchall():
                         substations.append({
-                            "id": f"sub_{row[0]}",
-                            "name": row[1] or "Unknown Substation",
+                            "id": f"sub_{row['substation_id']}",
+                            "substation_id": row['substation_id'],
+                            "name": row['name'] or "Unknown Substation",
                             "type": "substation",
-                            "latitude": float(row[4]) if row[4] else 31.9539,
-                            "longitude": float(row[5]) if row[5] else 35.9106,
-                            "voltage_level": row[2] or "138kV",
-                            "status": row[3] or "operational",
+                            "latitude": float(row['location_lat']) if row['location_lat'] else 31.9539,
+                            "longitude": float(row['location_lng']) if row['location_lng'] else 35.9106,
+                            "voltage_level": row['voltage_level'] or "33kV",
+                            "status": row['status'] or "active",
                             "load_percentage": 75
                         })
                     
@@ -3166,10 +3194,72 @@ def get_map_data(
                     "distribution_points": []
                 }
         
-        # Close database connection
+        # Add network topology connections BEFORE closing connection
+        if "outages" in map_data and map_data["outages"]:
+            try:
+                # First, ensure we have some substations
+                cursor.execute("""
+                    INSERT INTO network_substations (substation_id, name, location_lat, location_lng, region_code, voltage_level, status)
+                    VALUES 
+                        ('SS001', 'Central Amman Substation', 31.9539, 35.9106, 'AM', '33kV', 'active'),
+                        ('SS002', 'Zarqa Substation', 32.0731, 36.0880, 'ZR', '33kV', 'active'),
+                        ('SS003', 'Salt Substation', 32.0389, 35.7275, 'SL', '33kV', 'active'),
+                        ('SS004', 'Madaba Substation', 31.7167, 35.7833, 'MD', '33kV', 'active'),
+                        ('SS005', 'Jerash Substation', 32.2808, 35.8994, 'JR', '33kV', 'active')
+                    ON CONFLICT (substation_id) DO NOTHING
+                """)
+                
+                # Get outage-to-substation connections (link to nearest substation)
+                cursor.execute("""
+                    WITH nearest_substations AS (
+                        SELECT 
+                            oe.id as outage_id,
+                            oe.event_latitude as outage_lat,
+                            oe.event_longitude as outage_lng,
+                            ns.id as substation_id,
+                            ns.name as substation_name,
+                            ns.location_lat as substation_lat,
+                            ns.location_lng as substation_lng,
+                            ROW_NUMBER() OVER (PARTITION BY oe.id ORDER BY 
+                                (oe.event_latitude - ns.location_lat)^2 + (oe.event_longitude - ns.location_lng)^2
+                            ) as rn
+                        FROM oms_outage_events oe
+                        CROSS JOIN network_substations ns
+                        WHERE oe.event_latitude IS NOT NULL 
+                        AND oe.event_longitude IS NOT NULL
+                        AND ns.location_lat IS NOT NULL
+                        AND ns.location_lng IS NOT NULL
+                    )
+                    SELECT * FROM nearest_substations WHERE rn = 1
+                    ORDER BY outage_id
+                    LIMIT 50
+                """)
+                
+                topology_connections = cursor.fetchall()
+                map_data["topology_connections"] = [
+                    {
+                        "type": "outage_to_substation",
+                        "outage_id": str(conn['outage_id']),
+                        "outage_lat": float(conn['outage_lat']),
+                        "outage_lng": float(conn['outage_lng']),
+                        "substation_id": str(conn['substation_id']),
+                        "substation_name": conn['substation_name'],
+                        "substation_lat": float(conn['substation_lat']),
+                        "substation_lng": float(conn['substation_lng']),
+                        "connection_type": "electrical_control"
+                    }
+                    for conn in topology_connections
+                ]
+            except Exception as e:
+                print(f"Warning: Could not fetch topology connections: {e}")
+                map_data["topology_connections"] = []
+        else:
+            map_data["topology_connections"] = []
+
+        # Close database connection AFTER topology queries
         cursor.close()
         conn.close()
-        
+
         return {
             "map_data": map_data,
             "metadata": {
@@ -3177,6 +3267,7 @@ def get_map_data(
                 "total_events": len(map_data.get("events", [])),
                 "total_crews": len(map_data.get("crews", [])),
                 "total_hotspots": len(map_data.get("hotspots", [])),
+                "total_connections": len(map_data.get("topology_connections", [])),
                 "data_types_included": requested_types,
                 "time_range_days": days,
                 "last_updated": "2025-09-25T16:51:00Z"

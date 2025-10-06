@@ -80,10 +80,20 @@ class CallCenterConsumer:
         try:
             conn = self.db_pool.getconn()
             cur = conn.cursor()
-            cur.execute("SELECT insert_callcenter_ticket_from_json(%s::jsonb)", (json.dumps(payload),))
+            
+            # Use enhanced function that automatically links to oms_meters
+            cur.execute("SELECT insert_callcenter_ticket_from_json_with_meter_link(%s::jsonb)", (json.dumps(payload),))
             ticket_id = cur.fetchone()[0]
             conn.commit()
-            self.logger.info(f"Stored Call Center ticket {ticket_id}")
+            
+            # Enhanced logging with meter information
+            meter_number = payload.get('customer', {}).get('meterNumber')
+            customer_phone = payload.get('customer', {}).get('phone')
+            
+            if meter_number:
+                self.logger.info(f"Stored Call Center ticket {ticket_id} - Customer: {customer_phone}, Meter: {meter_number}, linked to oms_meters")
+            else:
+                self.logger.info(f"Stored Call Center ticket {ticket_id} - Customer: {customer_phone}, no meter number provided")
 
             # Optionally call OMS ingestion API for real-time correlation
             # Enable by setting OMS_API_URL (e.g., http://localhost:9100)

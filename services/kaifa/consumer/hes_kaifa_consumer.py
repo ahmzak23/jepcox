@@ -149,13 +149,24 @@ class HESKaifaConsumer:
             # Convert Python dict to JSON string for PostgreSQL
             json_string = json.dumps(data)
             
-            # Call the PostgreSQL function to insert event (kaifa-prefixed schema design)
-            cursor.execute("SELECT insert_kaifa_event_from_json(%s::jsonb)", (json_string,))
+            # Use enhanced function that automatically syncs meter status in oms_meters
+            cursor.execute("SELECT insert_kaifa_event_from_json_with_meter_sync(%s::jsonb)", (json_string,))
             
             event_id = cursor.fetchone()[0]
             conn.commit()
             
-            self.logger.info(f"Successfully stored event {event_id} to database")
+            # Enhanced logging for critical events (potential power loss)
+            payload_data = data.get('payload', {})
+            severity = payload_data.get('severity', 'unknown')
+            if severity in ('critical', 'high'):
+                assets = payload_data.get('assets', {})
+                meter_id = None
+                if isinstance(assets, dict):
+                    meter_id = assets.get('ns2:mRID') or assets.get('mRID')
+                
+                self.logger.warning(f"CRITICAL Kaifa Event - Meter {meter_id} severity={severity}, meter status updated to OFF")
+            
+            self.logger.info(f"Successfully stored event {event_id} to database with meter sync")
 
             # Optionally call OMS ingestion API for real-time correlation
             # Enable by setting OMS_API_URL (e.g., http://localhost:9100)

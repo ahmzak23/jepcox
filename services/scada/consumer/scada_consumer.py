@@ -90,10 +90,41 @@ class ScadaConsumer:
             payload['source'] = source or 'scada-consumer'
             conn = self.db_pool.getconn()
             cur = conn.cursor()
-            cur.execute("SELECT insert_scada_event_from_json(%s::jsonb)", (json.dumps(payload),))
-            ev_id = cur.fetchone()[0]
+            
+            # Use enhanced function that automatically checks meters when SCADA events occur
+            cur.execute("SELECT insert_scada_event_with_meter_check(%s::jsonb)", (json.dumps(payload),))
+            result = cur.fetchone()[0]
             conn.commit()
-            self.logger.info(f"Stored SCADA event {ev_id} to database")
+            
+            # Enhanced logging with meter check results
+            if isinstance(result, dict):
+                ev_id = result.get('scada_event_id')
+                meters_checked = result.get('meters_checked', False)
+                self.logger.info(f"Stored SCADA event {ev_id} to database")
+                
+                if meters_checked:
+                    total_meters = result.get('total_meters', 0)
+                    offline_meters = result.get('offline_meters', 0)
+                    online_meters = result.get('online_meters', 0)
+                    unknown_meters = result.get('unknown_meters', 0)
+                    outage_event_id = result.get('outage_event_id')
+                    
+                    self.logger.info(f"Meter Check Results:")
+                    self.logger.info(f"  Total meters: {total_meters}")
+                    self.logger.info(f"  Offline meters: {offline_meters}")
+                    self.logger.info(f"  Online meters: {online_meters}")
+                    self.logger.info(f"  Unknown meters: {unknown_meters}")
+                    
+                    if outage_event_id:
+                        self.logger.warning(f"OUTAGE DETECTED - Event ID: {outage_event_id}, {offline_meters} meters offline")
+                    else:
+                        self.logger.info("No outage detected - all meters responding normally")
+                else:
+                    self.logger.info(f"Meters not checked (non-critical alarm type: {event.get('alarmType')})")
+            else:
+                # Fallback for legacy function response
+                self.logger.info(f"Stored SCADA event {result} to database")
+                ev_id = result
 
             # Optionally call OMS ingestion API for real-time correlation
             # Enable by setting OMS_API_URL (e.g., http://localhost:9100)
