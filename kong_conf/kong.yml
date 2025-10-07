@@ -1,0 +1,47 @@
+_format_version: "3.0"
+
+services:
+  - name: kong-health-check
+    url: http://kong:8001/status
+    routes:
+      - name: kong-health-route
+        paths:
+          - /kong-health
+
+  - name: apisix-proxy
+    url: http://apisix:9080
+    routes:
+      - name: apisix-proxy-route
+        paths:
+          - /apisix-proxy
+
+  - name: web1-proxy
+    url: http://web1:80
+    routes:
+      - name: web1-proxy-route
+        paths:
+          - /web1
+
+plugins:
+  - name: cors
+    config:
+      origins:
+        - "*"
+      methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+      headers:
+        - Accept
+        - Accept-Version
+        - Content-Length
+        - Content-MD5
+        - Content-Type
+        - Date
+        - X-Auth-Token
+      exposed_headers:
+        - X-Auth-Token
+      credentials: true
+      max_age: 3600

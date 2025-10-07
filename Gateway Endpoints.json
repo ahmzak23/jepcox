@@ -1,0 +1,132 @@
+[
+    {
+        "uri": "/hes-mock-generator",
+        "name": "hes-mock-generator",
+        "methods": [
+            "GET",
+            "POST"
+        ],
+        "upstream": {
+            "nodes": {
+                "kaifa_hes_upstram": 1
+            },
+            "timeout": {
+                "connect": 6,
+                "send": 6,
+                "read": 6
+            },
+            "type": "roundrobin",
+            "scheme": "http",
+            "pass_host": "pass",
+            "keepalive_pool": {
+                "idle_timeout": 60,
+                "requests": 1000,
+                "size": 320
+            }
+        },
+        "status": 1
+    },
+    {
+        "uri": "/scada-mock-generator",
+        "name": "scada-mock-generator",
+        "methods": [
+            "GET",
+            "POST"
+        ],
+        "upstream": {
+            "nodes": {
+                "scada_upstram": 1
+            },
+            "timeout": {
+                "connect": 6,
+                "send": 6,
+                "read": 6
+            },
+            "type": "roundrobin",
+            "scheme": "http",
+            "pass_host": "pass",
+            "keepalive_pool": {
+                "idle_timeout": 60,
+                "requests": 1000,
+                "size": 320
+            }
+        },
+        "status": 1
+    },
+    {
+        "uri": "/call-center-ticket-generator",
+        "name": "call-center-ticket-generator",
+        "methods": [
+            "GET",
+            "POST"
+        ],
+        "upstream": {
+            "nodes": {
+                "call_center_upstream": 1
+            },
+            "timeout": {
+                "connect": 6,
+                "send": 6,
+                "read": 6
+            },
+            "type": "roundrobin",
+            "scheme": "http",
+            "pass_host": "pass",
+            "keepalive_pool": {
+                "idle_timeout": 60,
+                "requests": 1000,
+                "size": 320
+            }
+        },
+        "status": 1
+    },
+    {
+        "uri": "/onu-mock-generator",
+        "name": "onu-mock-generator",
+        "methods": [
+            "GET",
+            "POST"
+        ],
+        "upstream": {
+            "nodes": {
+                "onu_upstream": 1
+            },
+            "timeout": {
+                "connect": 6,
+                "send": 6,
+                "read": 6
+            },
+            "type": "roundrobin",
+            "scheme": "http",
+            "pass_host": "pass",
+            "keepalive_pool": {
+                "idle_timeout": 60,
+                "requests": 1000,
+                "size": 320
+            }
+        },
+        "status": 1
+    },
+    {
+        "uri": "/onu-mock-generator",
+        "name": "onu-mock-generator",
+        "methods": [
+            "GET",
+            "POST"
+        ],
+        "upstream": {
+            "nodes": [
+                {
+                    "host": "localhost",
+                    "port": 9088,
+                    "weight": 1
+                }
+            ],
+            "type": "roundrobin",
+            "hash_on": "vars",
+            "scheme": "http",
+            "pass_host": "pass"
+        },
+        "status": 1
+    }
+]

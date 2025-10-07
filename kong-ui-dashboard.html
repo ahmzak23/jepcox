@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kong UI Dashboard</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        .ui-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            padding: 40px;
+        }
+        .ui-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: 2px solid transparent;
+        }
+        .ui-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+            border-color: #667eea;
+        }
+        .ui-card h3 {
+            color: #2c3e50;
+            margin: 0 0 15px 0;
+            font-size: 1.4em;
+        }
+        .ui-card p {
+            color: #7f8c8d;
+            margin: 0 0 20px 0;
+            line-height: 1.5;
+        }
+        .ui-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 25px;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+        .ui-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-online {
+            background-color: #27ae60;
+            animation: pulse 2s infinite;
+        }
+        .status-offline {
+            background-color: #e74c3c;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .quick-actions {
+            background: #ecf0f1;
+            padding: 30px;
+            text-align: center;
+        }
+        .quick-actions h2 {
+            color: #2c3e50;
+            margin: 0 0 20px 0;
+        }
+        .action-button {
+            background: linear-gradient(135deg, #00b894, #00a085);
+            color: white;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 30px;
+            font-weight: 600;
+            margin: 10px;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+        .action-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 20px rgba(0, 184, 148, 0.4);
+        }
+        .footer {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Kong UI Dashboard</h1>
+            <p>Your Gateway to Kong API Management</p>
+        </div>
+        
+        <div class="ui-grid">
+            <div class="ui-card">
+                <h3>📊 Kong Manager</h3>
+                <p>Official Kong web interface for service management, route configuration, and real-time monitoring.</p>
+                <div>
+                    <span class="status-indicator status-online"></span>
+                    <span>Official UI</span>
+                </div>
+                <br><br>
+                <a href="http://localhost:8002" target="_blank" class="ui-button">Open Kong Manager</a>
+            </div>
+            
+            <div class="ui-card">
+                <h3>⚙️ Konga Admin</h3>
+                <p>Advanced administration interface with plugin marketplace, multi-instance management, and analytics.</p>
+                <div>
+                    <span class="status-indicator status-online"></span>
+                    <span>Advanced Features</span>
+                </div>
+                <br><br>
+                <a href="http://localhost:1337" target="_blank" class="ui-button">Open Konga</a>
+            </div>
+            
+            <div class="ui-card">
+                <h3>🔌 Admin API</h3>
+                <p>RESTful API interface for programmatic access to all Kong features and configurations.</p>
+                <div>
+                    <span class="status-indicator status-online"></span>
+                    <span>API Access</span>
+                </div>
+                <br><br>
+                <a href="http://localhost:8001" target="_blank" class="ui-button">View API Docs</a>
+            </div>
+            
+            <div class="ui-card">
+                <h3>🏥 Health Check</h3>
+                <p>Monitor Kong gateway health status and service availability in real-time.</p>
+                <div>
+                    <span class="status-indicator status-online"></span>
+                    <span>Monitoring</span>
+                </div>
+                <br><br>
+                <a href="http://localhost:8000/kong-health" target="_blank" class="ui-button">Check Health</a>
+            </div>
+        </div>
+        
+        <div class="quick-actions">
+            <h2>Quick Actions</h2>
+            <a href="http://localhost:8000" target="_blank" class="action-button">🚪 Kong Proxy</a>
+            <a href="http://localhost:8001/status" target="_blank" class="action-button">📈 Status API</a>
+            <a href="http://localhost:8001/services" target="_blank" class="action-button">🔧 Services API</a>
+            <a href="http://localhost:8000/apisix-proxy" target="_blank" class="action-button">🔄 APISIX Proxy</a>
+        </div>
+        
+        <div class="footer">
+            <p>Kong API Gateway UI Dashboard | Port 8000: Proxy | Port 8001: Admin API | Port 8002: Manager | Port 1337: Konga</p>
+        </div>
+    </div>
+    
+    <script>
+        // Auto-refresh status indicators
+        setInterval(async () => {
+            const indicators = document.querySelectorAll('.status-indicator');
+            const urls = [
+                'http://localhost:8002',
+                'http://localhost:1337', 
+                'http://localhost:8001',
+                'http://localhost:8000/kong-health'
+            ];
+            
+            for (let i = 0; i < indicators.length; i++) {
+                try {
+                    const response = await fetch(urls[i], { mode: 'no-cors' });
+                    indicators[i].className = 'status-indicator status-online';
+                } catch (error) {
+                    indicators[i].className = 'status-indicator status-offline';
+                }
+            }
+        }, 10000);
+    </script>
+</body>
+</html>
