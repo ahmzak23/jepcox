@@ -100,21 +100,18 @@ for ((i=0; i<$topics_count; i++)); do
     echo -e "${WHITE}Compression: ${NC}$compression_type"
     echo -e "${WHITE}Min ISR: ${NC}$min_isr"
     
-    # Build config string
-    configs="retention.ms=$retention_ms"
-    configs="$configs,segment.bytes=$segment_bytes"
-    configs="$configs,cleanup.policy=$cleanup_policy"
-    configs="$configs,compression.type=$compression_type"
-    configs="$configs,min.insync.replicas=$min_isr"
-    
-    # Create topic
+    # Create topic with multiple config parameters
     if docker exec $KAFKA_CONTAINER kafka-topics \
         --bootstrap-server $KAFKA_BROKER \
         --create \
         --topic "$topic_name" \
         --partitions $partitions \
         --replication-factor $replication \
-        --config "$configs" \
+        --config "retention.ms=$retention_ms" \
+        --config "segment.bytes=$segment_bytes" \
+        --config "cleanup.policy=$cleanup_policy" \
+        --config "compression.type=$compression_type" \
+        --config "min.insync.replicas=$min_isr" \
         --if-not-exists 2>/dev/null; then
         echo -e "${GREEN}✅ Created successfully${NC}"
         ((created++))
