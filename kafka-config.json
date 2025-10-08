@@ -1,0 +1,160 @@
+{
+  "metadata": {
+    "source": "APISIX Workshop Local Environment",
+    "export_date": "2025-10-08",
+    "kafka_version": "7.4.0",
+    "description": "Complete Kafka configuration including topics, consumer groups, and settings"
+  },
+  "broker_config": {
+    "bootstrap_servers": "localhost:9093",
+    "zookeeper_connect": "zookeeper:2181",
+    "default_replication_factor": 1,
+    "num_partitions": 3,
+    "log_retention_hours": 168,
+    "log_segment_bytes": 1073741824,
+    "auto_create_topics_enable": true
+  },
+  "topics": [
+    {
+      "name": "hes-kaifa-outage-topic",
+      "partitions": 3,
+      "replication_factor": 1,
+      "configs": {
+        "retention.ms": "604800000",
+        "segment.bytes": "1073741824",
+        "cleanup.policy": "delete",
+        "compression.type": "producer",
+        "min.insync.replicas": "1"
+      },
+      "description": "HES Kaifa smart meter outage events and alarms",
+      "consumer_groups": [
+        "hes-kaifa-consumer-group"
+      ],
+      "upstream_service": "kaifa_hes_upstram",
+      "upstream_port": 9085
+    },
+    {
+      "name": "scada-outage-topic",
+      "partitions": 3,
+      "replication_factor": 1,
+      "configs": {
+        "retention.ms": "604800000",
+        "segment.bytes": "1073741824",
+        "cleanup.policy": "delete",
+        "compression.type": "producer",
+        "min.insync.replicas": "1"
+      },
+      "description": "SCADA system outage and alarm events",
+      "consumer_groups": [
+        "scada-consumer-group"
+      ],
+      "upstream_service": "scada_upstram",
+      "upstream_port": 9086
+    },
+    {
+      "name": "call_center_upstream_topic",
+      "partitions": 3,
+      "replication_factor": 1,
+      "configs": {
+        "retention.ms": "604800000",
+        "segment.bytes": "1073741824",
+        "cleanup.policy": "delete",
+        "compression.type": "producer",
+        "min.insync.replicas": "1"
+      },
+      "description": "Call center customer tickets and support requests",
+      "consumer_groups": [
+        "call-center-consumer-group"
+      ],
+      "upstream_service": "call_center_upstream",
+      "upstream_port": 9087
+    },
+    {
+      "name": "onu-events-topic",
+      "partitions": 3,
+      "replication_factor": 1,
+      "configs": {
+        "retention.ms": "604800000",
+        "segment.bytes": "1073741824",
+        "cleanup.policy": "delete",
+        "compression.type": "producer",
+        "min.insync.replicas": "1"
+      },
+      "description": "ONU (Optical Network Unit) events and status updates",
+      "consumer_groups": [
+        "onu-consumer-group"
+      ],
+      "upstream_service": "onu_upstream",
+      "upstream_port": 9088
+    }
+  ],
+  "consumer_groups": [
+    {
+      "name": "hes-kaifa-consumer-group",
+      "topics": [
+        "hes-kaifa-outage-topic"
+      ],
+      "description": "Consumes HES Kaifa outage events for processing and storage",
+      "auto_offset_reset": "earliest",
+      "enable_auto_commit": true,
+      "consumer_service": "hes-consumer",
+      "consumer_container": "apisix-workshop-hes-consumer"
+    },
+    {
+      "name": "scada-consumer-group",
+      "topics": [
+        "scada-outage-topic"
+      ],
+      "description": "Consumes SCADA outage and alarm events",
+      "auto_offset_reset": "earliest",
+      "enable_auto_commit": true,
+      "consumer_service": "scada-consumer",
+      "consumer_container": "apisix-workshop-scada-consumer"
+    },
+    {
+      "name": "call-center-consumer-group",
+      "topics": [
+        "call_center_upstream_topic"
+      ],
+      "description": "Consumes call center tickets and customer reports",
+      "auto_offset_reset": "earliest",
+      "enable_auto_commit": true,
+      "consumer_service": "call-center-consumer",
+      "consumer_container": "apisix-workshop-call-center-consumer"
+    },
+    {
+      "name": "onu-consumer-group",
+      "topics": [
+        "onu-events-topic"
+      ],
+      "description": "Consumes ONU events and network status updates",
+      "auto_offset_reset": "earliest",
+      "enable_auto_commit": true,
+      "consumer_service": "onu-consumer",
+      "consumer_container": "apisix-workshop-onu-consumer"
+    }
+  ],
+  "retention_policies": {
+    "default_retention_ms": 604800000,
+    "default_retention_days": 7,
+    "segment_bytes": 1073741824,
+    "segment_ms": 604800000,
+    "cleanup_policy": "delete"
+  },
+  "performance_settings": {
+    "num_network_threads": 3,
+    "num_io_threads": 8,
+    "socket_send_buffer_bytes": 102400,
+    "socket_receive_buffer_bytes": 102400,
+    "socket_request_max_bytes": 104857600,
+    "num_replica_fetchers": 1,
+    "replica_lag_time_max_ms": 10000
+  },
+  "notes": {
+    "consumer_groups_auto_create": "Consumer groups are created automatically when consumers connect",
+    "retention_period": "All topics retain messages for 7 days (604800000 ms)",
+    "partition_strategy": "All topics use 3 partitions for parallel processing",
+    "replication_strategy": "Single replication factor suitable for development/testing",
+    "segment_size": "1GB segment size for efficient storage and retrieval"
+  }
+}
