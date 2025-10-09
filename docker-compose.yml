@@ -284,6 +284,8 @@ services:
     image: postgres:13
     container_name: apisix-workshop-oms-database
     restart: always
+    env_file:
+      - oms.env
     environment:
       POSTGRES_DB: ${DB_NAME:-oms_db}
       POSTGRES_USER: ${DB_USER:-web}
@@ -306,6 +308,8 @@ services:
     hostname: hes-consumer
     container_name: apisix-workshop-hes-consumer
     restart: always
+    env_file:
+      - oms.env
     environment:
       - OMS_API_URL=http://oms-api:8000
       - DB_HOST=${DB_HOST:-oms-database}
@@ -338,6 +342,8 @@ services:
     hostname: scada-consumer
     container_name: apisix-workshop-scada-consumer
     restart: always
+    env_file:
+      - oms.env
     environment:
       - OMS_API_URL=http://oms-api:8000
       - DB_HOST=${DB_HOST:-oms-database}
@@ -369,6 +375,8 @@ services:
     hostname: call-center-consumer
     container_name: apisix-workshop-call-center-consumer
     restart: always
+    env_file:
+      - oms.env
     environment:
       - OMS_API_URL=http://oms-api:8000
       - DB_HOST=${DB_HOST:-oms-database}
@@ -400,6 +408,8 @@ services:
     hostname: onu-consumer
     container_name: apisix-workshop-onu-consumer
     restart: always
+    env_file:
+      - oms.env
     environment:
       - OMS_API_URL=http://oms-api:8000
       - DB_HOST=${DB_HOST:-oms-database}
