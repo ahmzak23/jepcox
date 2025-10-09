@@ -312,12 +312,6 @@ services:
       - oms.env
     environment:
       - OMS_API_URL=http://oms-api:8000
-      - DB_HOST=${DB_HOST:-oms-database}
-      - DB_PORT=${DB_PORT:-5432}
-      - DB_NAME=${DB_NAME:-oms_db}
-      - DB_USER=${DB_USER:-web}
-      - DB_PASSWORD=${DB_PASSWORD:-123456}
-      - DB_SSL_MODE=${DB_SSL_MODE:-prefer}
     volumes:
       - ./services/kaifa/consumer:/workspace/hes-consumer
       - ./services/kaifa/db:/workspace/hes-db
@@ -346,12 +340,6 @@ services:
       - oms.env
     environment:
       - OMS_API_URL=http://oms-api:8000
-      - DB_HOST=${DB_HOST:-oms-database}
-      - DB_PORT=${DB_PORT:-5432}
-      - DB_NAME=${DB_NAME:-oms_db}
-      - DB_USER=${DB_USER:-web}
-      - DB_PASSWORD=${DB_PASSWORD:-123456}
-      - DB_SSL_MODE=${DB_SSL_MODE:-prefer}
     volumes:
       - ./services/scada/consumer:/workspace/scada-consumer
       - ./requirements.txt:/workspace/requirements.txt
@@ -379,12 +367,6 @@ services:
       - oms.env
     environment:
       - OMS_API_URL=http://oms-api:8000
-      - DB_HOST=${DB_HOST:-oms-database}
-      - DB_PORT=${DB_PORT:-5432}
-      - DB_NAME=${DB_NAME:-oms_db}
-      - DB_USER=${DB_USER:-web}
-      - DB_PASSWORD=${DB_PASSWORD:-123456}
-      - DB_SSL_MODE=${DB_SSL_MODE:-prefer}
     volumes:
       - ./services/call_center/consumer:/workspace/call-center-consumer
       - ./requirements.txt:/workspace/requirements.txt
@@ -412,12 +394,6 @@ services:
       - oms.env
     environment:
       - OMS_API_URL=http://oms-api:8000
-      - DB_HOST=${DB_HOST:-oms-database}
-      - DB_PORT=${DB_PORT:-5432}
-      - DB_NAME=${DB_NAME:-oms_db}
-      - DB_USER=${DB_USER:-web}
-      - DB_PASSWORD=${DB_PASSWORD:-123456}
-      - DB_SSL_MODE=${DB_SSL_MODE:-prefer}
     volumes:
       - ./services/onu/consumer:/workspace/onu-consumer
       - ./services/onu/db:/workspace/onu-db
