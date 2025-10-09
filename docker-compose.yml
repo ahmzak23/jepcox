@@ -279,6 +279,27 @@ services:
     networks:
       apisix:
 
+  # PostgreSQL Database for OMS System
+  oms-database:
+    image: postgres:13
+    container_name: apisix-workshop-oms-database
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME:-oms_db}
+      POSTGRES_USER: ${DB_USER:-web}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-123456}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - oms_database_data:/var/lib/postgresql/data
+      - ./services/kaifa/db/kaifa_database_schema.sql:/docker-entrypoint-initdb.d/01-kaifa-schema.sql:ro
+      - ./services/scada/db/scada_database_schema.sql:/docker-entrypoint-initdb.d/02-scada-schema.sql:ro
+      - ./services/call_center/db/call_center_database_schema.sql:/docker-entrypoint-initdb.d/03-call-center-schema.sql:ro
+      - ./services/onu/db/onu_database_schema.sql:/docker-entrypoint-initdb.d/04-onu-schema.sql:ro
+    ports:
+      - "${DB_PORT:-5433}:5432"
+    networks:
+      apisix:
+
   # HES-Kaifa Consumer Service
   hes-consumer:
     image: python:3.9-slim
@@ -287,11 +308,12 @@ services:
     restart: always
     environment:
       - OMS_API_URL=http://oms-api:8000
-      - DB_HOST=oms-api
-      - DB_PORT=5432
-      - DB_NAME=oms_db
-      - DB_USER=web
-      - DB_PASSWORD=123456
+      - DB_HOST=${DB_HOST:-oms-database}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME:-oms_db}
+      - DB_USER=${DB_USER:-web}
+      - DB_PASSWORD=${DB_PASSWORD:-123456}
+      - DB_SSL_MODE=${DB_SSL_MODE:-prefer}
     volumes:
       - ./services/kaifa/consumer:/workspace/hes-consumer
       - ./services/kaifa/db:/workspace/hes-db
@@ -306,6 +328,7 @@ services:
     depends_on:
       - kafka
       - oms-api
+      - oms-database
     networks:
       apisix:
 
@@ -317,11 +340,12 @@ services:
     restart: always
     environment:
       - OMS_API_URL=http://oms-api:8000
-      - DB_HOST=oms-api
-      - DB_PORT=5432
-      - DB_NAME=oms_db
-      - DB_USER=web
-      - DB_PASSWORD=123456
+      - DB_HOST=${DB_HOST:-oms-database}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME:-oms_db}
+      - DB_USER=${DB_USER:-web}
+      - DB_PASSWORD=${DB_PASSWORD:-123456}
+      - DB_SSL_MODE=${DB_SSL_MODE:-prefer}
     volumes:
       - ./services/scada/consumer:/workspace/scada-consumer
       - ./requirements.txt:/workspace/requirements.txt
@@ -335,6 +359,7 @@ services:
     depends_on:
       - kafka
       - oms-api
+      - oms-database
     networks:
       apisix:
 
@@ -346,11 +371,12 @@ services:
     restart: always
     environment:
       - OMS_API_URL=http://oms-api:8000
-      - DB_HOST=oms-api
-      - DB_PORT=5432
-      - DB_NAME=oms_db
-      - DB_USER=web
-      - DB_PASSWORD=123456
+      - DB_HOST=${DB_HOST:-oms-database}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME:-oms_db}
+      - DB_USER=${DB_USER:-web}
+      - DB_PASSWORD=${DB_PASSWORD:-123456}
+      - DB_SSL_MODE=${DB_SSL_MODE:-prefer}
     volumes:
       - ./services/call_center/consumer:/workspace/call-center-consumer
       - ./requirements.txt:/workspace/requirements.txt
@@ -364,6 +390,7 @@ services:
     depends_on:
       - kafka
       - oms-api
+      - oms-database
     networks:
       apisix:
 
@@ -375,11 +402,12 @@ services:
     restart: always
     environment:
       - OMS_API_URL=http://oms-api:8000
-      - DB_HOST=oms-api
-      - DB_PORT=5432
-      - DB_NAME=oms_db
-      - DB_USER=web
-      - DB_PASSWORD=123456
+      - DB_HOST=${DB_HOST:-oms-database}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME:-oms_db}
+      - DB_USER=${DB_USER:-web}
+      - DB_PASSWORD=${DB_PASSWORD:-123456}
+      - DB_SSL_MODE=${DB_SSL_MODE:-prefer}
     volumes:
       - ./services/onu/consumer:/workspace/onu-consumer
       - ./services/onu/db:/workspace/onu-db
@@ -394,6 +422,7 @@ services:
     depends_on:
       - kafka
       - oms-api
+      - oms-database
     networks:
       apisix:
 
@@ -513,4 +542,6 @@ volumes:
   kong_database_data:
     driver: local
   konga_database_data:
+    driver: local
+  oms_database_data:
     driver: local
