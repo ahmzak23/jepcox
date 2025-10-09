@@ -102,3 +102,4 @@ echo -e "${CYAN}📌 Note: Consumer groups will appear in the UI when:${NC}"
 echo "   • Your applications start consuming from the topics"
 echo "   • You run the manual creation commands above"
 echo "   • You start any Kafka consumer applications"
+

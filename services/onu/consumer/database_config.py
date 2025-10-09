@@ -8,7 +8,7 @@ import os
 
 class DatabaseConfig:
     def __init__(self):
-        self.host = os.getenv('DB_HOST', 'host.docker.internal')
+        self.host = os.getenv('DB_HOST', 'oms-api')  # Use OMS API service as database host
         self.port = int(os.getenv('DB_PORT', '5432'))
         self.database = os.getenv('DB_NAME', 'oms_db')
         self.user = os.getenv('DB_USER', 'web')

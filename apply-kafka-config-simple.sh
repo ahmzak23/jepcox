@@ -178,3 +178,4 @@ echo "  • onu-consumer-group"
 echo ""
 
 echo -e "${GREEN}🎉 Kafka setup complete!${NC}"
+

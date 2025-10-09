@@ -87,3 +87,4 @@ echo -e "${GREEN}✅ Consumer groups setup complete!${NC}"
 echo ""
 echo -e "${CYAN}📌 Note: These consumer groups will now appear in your Kafka UI${NC}"
 echo -e "${CYAN}   They will show as STABLE with 0 members until applications connect${NC}"
+

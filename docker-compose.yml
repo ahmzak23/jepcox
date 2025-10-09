@@ -287,6 +287,11 @@ services:
     restart: always
     environment:
       - OMS_API_URL=http://oms-api:8000
+      - DB_HOST=oms-api
+      - DB_PORT=5432
+      - DB_NAME=oms_db
+      - DB_USER=web
+      - DB_PASSWORD=123456
     volumes:
       - ./services/kaifa/consumer:/workspace/hes-consumer
       - ./services/kaifa/db:/workspace/hes-db
@@ -312,6 +317,11 @@ services:
     restart: always
     environment:
       - OMS_API_URL=http://oms-api:8000
+      - DB_HOST=oms-api
+      - DB_PORT=5432
+      - DB_NAME=oms_db
+      - DB_USER=web
+      - DB_PASSWORD=123456
     volumes:
       - ./services/scada/consumer:/workspace/scada-consumer
       - ./requirements.txt:/workspace/requirements.txt
@@ -336,6 +346,11 @@ services:
     restart: always
     environment:
       - OMS_API_URL=http://oms-api:8000
+      - DB_HOST=oms-api
+      - DB_PORT=5432
+      - DB_NAME=oms_db
+      - DB_USER=web
+      - DB_PASSWORD=123456
     volumes:
       - ./services/call_center/consumer:/workspace/call-center-consumer
       - ./requirements.txt:/workspace/requirements.txt
@@ -360,6 +375,11 @@ services:
     restart: always
     environment:
       - OMS_API_URL=http://oms-api:8000
+      - DB_HOST=oms-api
+      - DB_PORT=5432
+      - DB_NAME=oms_db
+      - DB_USER=web
+      - DB_PASSWORD=123456
     volumes:
       - ./services/onu/consumer:/workspace/onu-consumer
       - ./services/onu/db:/workspace/onu-db
